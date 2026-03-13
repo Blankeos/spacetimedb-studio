@@ -6,7 +6,7 @@ import tsConfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
   plugins: [tsConfigPaths(), vike(), vikeSolid(), vikeRoutegen()],
-  server: { port: 3000 },
-  preview: { port: 3000 },
+  server: { port: 5173 },
+  preview: { port: 5173 },
   envPrefix: ["PUBLIC_"],
 })
