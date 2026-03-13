@@ -1,3 +1,4 @@
+import { toggleLineComment } from "@codemirror/commands"
 import { StandardSQL, sql } from "@codemirror/lang-sql"
 import { EditorState } from "@codemirror/state"
 import { oneDark } from "@codemirror/theme-one-dark"
@@ -31,6 +32,10 @@ export function SqlEditor(props: SqlEditorProps) {
             props.onExecute()
             return true
           },
+        },
+        {
+          key: "Mod-/",
+          run: toggleLineComment,
         },
       ]),
       EditorView.updateListener.of(
@@ -84,6 +89,10 @@ export function SqlEditor(props: SqlEditorProps) {
                   props.onExecute()
                   return true
                 },
+              },
+              {
+                key: "Mod-/",
+                run: toggleLineComment,
               },
             ]),
             EditorView.updateListener.of(

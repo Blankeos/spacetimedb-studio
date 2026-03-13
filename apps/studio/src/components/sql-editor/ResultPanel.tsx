@@ -1,8 +1,24 @@
 import { type Component, For, Show } from "solid-js"
+import { useClipboard } from "bagon-hooks"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/utils/cn"
+
+const CheckIcon = (props: { class?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class={props.class}
+  >
+    <path d="M20 6L9 17l-5-5" />
+  </svg>
+)
 
 export interface StatementResult {
   statement: string
@@ -33,6 +49,8 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
   const hasResults = () => props.results && props.results.length > 0
   const hasMultipleResults = () => props.results && props.results.length > 1
 
+  const clipboard = useClipboard()
+
   const copyAsCsv = (result: StatementResult) => {
     const data = result.data
     if (!data) return
@@ -55,7 +73,7 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
         .join(",")
     )
     const csv = [header, ...csvRows].join("\n")
-    navigator.clipboard.writeText(csv)
+    clipboard.copy(csv)
   }
 
   const renderResultTable = (result: StatementResult) => (
@@ -265,7 +283,15 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
                               onClick={() => copyAsCsv(result)}
                               class="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
                             >
-                              Copy CSV
+                              <Show
+                                when={clipboard.copied()}
+                                fallback="Copy CSV"
+                              >
+                                <span class="flex items-center gap-1 text-emerald-500">
+                                  <CheckIcon class="size-3" />
+                                  Copied
+                                </span>
+                              </Show>
                             </Button>
                           </Show>
                         </div>

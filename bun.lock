@@ -14,6 +14,7 @@
       "name": "@spacetimedb-studio/studio",
       "version": "0.0.1",
       "dependencies": {
+        "@codemirror/commands": "^6.10.3",
         "@codemirror/lang-sql": "^6.8.5",
         "@codemirror/state": "^6.6.0",
         "@codemirror/theme-one-dark": "^6.1.2",
@@ -25,6 +26,7 @@
         "@tailwindcss/vite": "^4.2.0",
         "@tanstack/solid-query": "^5.90.23",
         "@tanstack/solid-table": "^8.21.3",
+        "bagon-hooks": "^0.0.6",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "codemirror": "^6.0.1",
@@ -471,6 +473,8 @@
     "babel-plugin-jsx-dom-expressions": ["babel-plugin-jsx-dom-expressions@0.40.5", "", { "dependencies": { "@babel/helper-module-imports": "7.18.6", "@babel/plugin-syntax-jsx": "^7.18.6", "@babel/types": "^7.20.7", "html-entities": "2.3.3", "parse5": "^7.1.2" }, "peerDependencies": { "@babel/core": "^7.20.12" } }, "sha512-8TFKemVLDYezqqv4mWz+PhRrkryTzivTGu0twyLrOkVZ0P63COx2Y04eVsUjFlwSOXui1z3P3Pn209dokWnirg=="],
 
     "babel-preset-solid": ["babel-preset-solid@1.9.10", "", { "dependencies": { "babel-plugin-jsx-dom-expressions": "^0.40.3" }, "peerDependencies": { "@babel/core": "^7.0.0", "solid-js": "^1.9.10" }, "optionalPeers": ["solid-js"] }, "sha512-HCelrgua/Y+kqO8RyL04JBWS/cVdrtUv/h45GntgQY+cJl4eBcKkCDV3TdMjtKx1nXwRaR9QXslM/Npm1dxdZQ=="],
+
+    "bagon-hooks": ["bagon-hooks@0.0.6", "", { "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-LPFaRCz89A6I1F/jFi+c+Uku2v07bx5pSGJmwHXJGY/VSLhePsewWmE2sPAIU0751HEpSXDaPCGgGLr5usOegg=="],
 
     "balanced-match": ["balanced-match@1.0.2", "", {}, "sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw=="],
 
