@@ -21,14 +21,47 @@ interface ResultPanelProps {
 }
 
 export const ResultPanel: Component<ResultPanelProps> = (props) => {
+  const copyAsCsv = () => {
+    const data = props.result?.data
+    if (!data) return
+
+    const columns = data.columns
+    const rows = data.rows
+
+    const header = columns.join(",")
+    const csvRows = rows.map((row) =>
+      columns
+        .map((col) => {
+          const value = row[col]
+          if (value === null || value === undefined) return ""
+          const str = String(value)
+          if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+            return `"${str.replace(/"/g, '""')}"`
+          }
+          return str
+        })
+        .join(",")
+    )
+    const csv = [header, ...csvRows].join("\n")
+    navigator.clipboard.writeText(csv)
+  }
+
   return (
-    <Card class="m-0 flex flex-1 flex-col overflow-hidden border-0 border-border bg-card h-full">
-      <CardHeader class="flex shrink-0 flex-row items-center justify-between border-border border-b bg-muted/30 px-3 py-2 h-[33px]">
-        <CardTitle class="font-medium text-muted-foreground text-xs uppercase tracking-wider mb-0">
+    <Card class="m-0 flex h-full flex-1 flex-col overflow-hidden border-0 border-border bg-card">
+      <CardHeader class="flex h-[33px] shrink-0 flex-row items-center justify-between border-border border-b bg-muted/30 px-3 py-2">
+        <CardTitle class="mb-0 font-medium text-muted-foreground text-xs uppercase tracking-wider">
           Results
         </CardTitle>
         <div class="flex items-center gap-2">
           <Show when={props.result && !props.isLoading}>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={copyAsCsv}
+              class="h-6 px-2 text-muted-foreground hover:text-foreground"
+            >
+              Copy CSV
+            </Button>
             <Button
               variant="ghost"
               size="xs"
@@ -41,7 +74,7 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
         </div>
       </CardHeader>
 
-      <CardContent class="h-full flex-1 flex flex-col overflow-auto p-0">
+      <CardContent class="flex h-full flex-1 flex-col overflow-auto p-0">
         <Show when={props.isLoading}>
           <div class="flex h-full items-center justify-center">
             <div class="flex flex-col items-center gap-3">
