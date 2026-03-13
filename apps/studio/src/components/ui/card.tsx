@@ -6,10 +6,7 @@ import { cn } from "@/utils/cn"
 const Card: Component<ComponentProps<"div">> = (props) => {
   const [local, others] = splitProps(props, ["class"])
   return (
-    <div
-      class={cn("rounded-lg border bg-card text-card-foreground shadow-sm", local.class)}
-      {...others}
-    />
+    <div class={cn("border bg-card text-card-foreground shadow-sm", local.class)} {...others} />
   )
 }
 
@@ -21,7 +18,10 @@ const CardHeader: Component<ComponentProps<"div">> = (props) => {
 const CardTitle: Component<ComponentProps<"h3">> = (props) => {
   const [local, others] = splitProps(props, ["class"])
   return (
-    <h3 class={cn("font-semibold text-lg leading-none tracking-tight", local.class)} {...others} />
+    <h3
+      class={cn("font-semibold text-base leading-none tracking-tight", local.class)}
+      {...others}
+    />
   )
 }
 

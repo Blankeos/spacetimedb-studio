@@ -1,9 +1,9 @@
-import { createEffect, on, onMount } from "solid-js"
-import { EditorView, keymap } from "@codemirror/view"
+import { StandardSQL, sql } from "@codemirror/lang-sql"
 import { EditorState } from "@codemirror/state"
-import { sql, StandardSQL } from "@codemirror/lang-sql"
 import { oneDark } from "@codemirror/theme-one-dark"
+import { EditorView, keymap } from "@codemirror/view"
 import { vim } from "@replit/codemirror-vim"
+import { createEffect, on, onMount } from "solid-js"
 
 type SqlEditorProps = {
   value: string
@@ -33,11 +33,13 @@ export function SqlEditor(props: SqlEditorProps) {
           },
         },
       ]),
-      EditorView.updateListener.of((update: { docChanged: boolean, state: { doc: { toString: () => string } } }) => {
-        if (update.docChanged) {
-          props.onChange(update.state.doc.toString())
+      EditorView.updateListener.of(
+        (update: { docChanged: boolean; state: { doc: { toString: () => string } } }) => {
+          if (update.docChanged) {
+            props.onChange(update.state.doc.toString())
+          }
         }
-      }),
+      ),
       EditorView.lineWrapping,
       EditorState.readOnly.of(props.readOnly ?? false),
     ]
@@ -59,7 +61,7 @@ export function SqlEditor(props: SqlEditorProps) {
     EditorView.theme({
       "&": { height: "100%" },
       ".cm-scroller": { overflow: "auto" },
-      ".cm-content": { padding: "10px" },
+      ".cm-content": { padding: "12px" },
     })
   })
 
@@ -68,7 +70,7 @@ export function SqlEditor(props: SqlEditorProps) {
       () => props.vimMode,
       (vimMode) => {
         if (!view) return
-        
+
         const newState = EditorState.create({
           doc: view.state.doc.toString(),
           extensions: [
@@ -84,11 +86,13 @@ export function SqlEditor(props: SqlEditorProps) {
                 },
               },
             ]),
-            EditorView.updateListener.of((update: { docChanged: boolean, state: { doc: { toString: () => string } } }) => {
-              if (update.docChanged) {
-                props.onChange(update.state.doc.toString())
+            EditorView.updateListener.of(
+              (update: { docChanged: boolean; state: { doc: { toString: () => string } } }) => {
+                if (update.docChanged) {
+                  props.onChange(update.state.doc.toString())
+                }
               }
-            }),
+            ),
             EditorView.lineWrapping,
           ],
         })
@@ -100,7 +104,7 @@ export function SqlEditor(props: SqlEditorProps) {
   return (
     <div
       ref={editorRef}
-      class={`h-full w-full overflow-hidden rounded-md border border-border ${props.class || ""}`}
+      class={`h-full w-full overflow-hidden border border-border ${props.class || ""}`}
     />
   )
 }

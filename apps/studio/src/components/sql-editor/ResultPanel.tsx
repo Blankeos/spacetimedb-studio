@@ -1,7 +1,7 @@
-import { Show, For, type Component } from "solid-js"
-import { cn } from "@/utils/cn"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { type Component, For, Show } from "solid-js"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { cn } from "@/utils/cn"
 
 interface QueryResult {
   success: boolean
@@ -22,9 +22,9 @@ interface ResultPanelProps {
 
 export const ResultPanel: Component<ResultPanelProps> = (props) => {
   return (
-    <Card class="m-2 flex-1 flex flex-col border-border/50 bg-card/50 overflow-hidden">
-      <CardHeader class="flex flex-row items-center justify-between py-2 px-3 border-b border-border/50 bg-muted/30 shrink-0">
-        <CardTitle class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+    <Card class="m-0 flex flex-1 flex-col overflow-hidden border-0 border-border bg-card h-full">
+      <CardHeader class="flex shrink-0 flex-row items-center justify-between border-border border-b bg-muted/30 px-3 py-2 h-[33px]">
+        <CardTitle class="font-medium text-muted-foreground text-xs uppercase tracking-wider mb-0">
           Results
         </CardTitle>
         <div class="flex items-center gap-2">
@@ -41,47 +41,49 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
         </div>
       </CardHeader>
 
-      <CardContent class="flex-1 overflow-auto p-0">
+      <CardContent class="h-full flex-1 flex flex-col overflow-auto p-0">
         <Show when={props.isLoading}>
-          <div class="flex items-center justify-center h-full">
+          <div class="flex h-full items-center justify-center">
             <div class="flex flex-col items-center gap-3">
               <div class="relative">
-                <div class="size-8 rounded-full border-2 border-border border-t-primary animate-spin" />
+                <div class="size-6 animate-spin border-2 border-border border-t-primary" />
               </div>
-              <span class="text-sm text-muted-foreground">Executing query...</span>
+              <span class="text-muted-foreground text-sm">Executing query...</span>
             </div>
           </div>
         </Show>
 
         <Show when={!props.isLoading && !props.result}>
-          <div class="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="mb-3 opacity-40"
-            >
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            <p class="text-sm">Run a query to see results</p>
-            <p class="text-xs mt-1 opacity-60">Press Cmd+Enter or click Run</p>
+          <div class="h-full">
+            <div class="flex h-full flex-col items-center justify-center text-muted-foreground">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="mb-3 opacity-40"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <p class="text-sm">Run a query to see results</p>
+              <p class="mt-1 text-xs opacity-60">Press ⌘ + ⏎ or click Run</p>
+            </div>
           </div>
         </Show>
 
         <Show when={!props.isLoading && props.result?.success && props.result.data}>
           <div class="overflow-auto">
             <table class="w-full text-sm">
-              <thead class="sticky top-0 bg-card z-10">
-                <tr class="border-b border-border">
+              <thead class="sticky top-0 z-10 bg-card">
+                <tr class="border-border border-b">
                   <For each={props.result?.data?.columns}>
                     {(column) => (
-                      <th class="text-left px-4 py-2 font-medium text-muted-foreground text-xs uppercase tracking-wider whitespace-nowrap bg-muted/30 border-r border-border/50 last:border-r-0">
+                      <th class="whitespace-nowrap border-border border-r bg-muted/30 px-4 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider last:border-r-0">
                         {column}
                       </th>
                     )}
@@ -93,13 +95,13 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
                   {(row, index) => (
                     <tr
                       class={cn(
-                        "border-b border-border/50 hover:bg-accent/30 transition-colors",
+                        "border-border/50 border-b transition-colors hover:bg-accent/30",
                         index() % 2 === 0 ? "bg-transparent" : "bg-muted/10"
                       )}
                     >
                       <For each={props.result?.data?.columns}>
                         {(column) => (
-                          <td class="px-4 py-2 font-mono text-xs text-foreground/90 border-r border-border/30 last:border-r-0 whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]">
+                          <td class="max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap border-border/30 border-r px-4 py-2 font-mono text-foreground/90 text-xs last:border-r-0">
                             <CellValue value={row[column]} />
                           </td>
                         )}
@@ -118,8 +120,8 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
         </Show>
 
         <Show when={!props.isLoading && props.result && !props.result.success}>
-          <div class="flex flex-col p-4">
-            <div class="flex items-start gap-3 p-4 rounded-md bg-destructive/10 border border-destructive/30 text-destructive">
+          <div class="flex h-full flex-col items-center justify-center p-4">
+            <div class="flex items-start gap-3 border border-destructive/30 bg-destructive/10 p-4 text-destructive">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="18"
@@ -130,15 +132,15 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                class="shrink-0 mt-0.5"
+                class="mt-0.5 shrink-0"
               >
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
-              <div class="flex-1 min-w-0">
+              <div class="min-w-0 flex-1">
                 <p class="font-medium text-sm">Query Error</p>
-                <p class="text-sm mt-1 opacity-90 font-mono break-words">
+                <p class="mt-1 break-words font-mono text-sm opacity-90">
                   {props.result?.error || "An unknown error occurred"}
                 </p>
               </div>
@@ -159,14 +161,12 @@ function CellValue(props: { value: unknown }) {
 
   if (typeof value === "boolean") {
     return (
-      <span class={value ? "text-green-400" : "text-red-400"}>
-        {value ? "true" : "false"}
-      </span>
+      <span class={value ? "text-emerald-400" : "text-red-400"}>{value ? "true" : "false"}</span>
     )
   }
 
   if (typeof value === "number") {
-    return <span class="text-cyan-400">{value}</span>
+    return <span class="text-sky-400">{value}</span>
   }
 
   if (typeof value === "string") {
@@ -174,7 +174,7 @@ function CellValue(props: { value: unknown }) {
     if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
       return <span class="text-amber-400/80">{value}</span>
     }
-    return <span class="text-green-400/80">"{value}"</span>
+    return <span class="text-emerald-400/80">"{value}"</span>
   }
 
   return <span>{String(value)}</span>

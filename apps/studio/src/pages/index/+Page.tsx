@@ -1,12 +1,12 @@
-import { createSignal, Show, createEffect } from "solid-js"
+import { createEffect, createSignal, Show } from "solid-js"
 import { useMetadata } from "vike-metadata-solid"
-import { Panel, PanelGroup, ResizeHandle } from "solid-resizable-panels"
+import { ResultPanel } from "@/components/sql-editor/ResultPanel"
+import { SqlEditor } from "@/components/sql-editor/SqlEditor"
+import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { Resizable, ResizableHandle, ResizablePanel } from "@/components/ui/resizable"
 import { honoClient } from "@/lib/hono-client"
 import getTitle from "@/utils/get-title"
-import { SqlEditor } from "@/components/sql-editor/SqlEditor"
-import { ResultPanel } from "@/components/sql-editor/ResultPanel"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 
 interface QueryResult {
   success: boolean
@@ -38,6 +38,7 @@ export default function SqlEditorPage() {
 
   const [database, setDatabase] = createSignal<string | null>(null)
   const [loading, setLoading] = createSignal(true)
+  const [editingDatabase, setEditingDatabase] = createSignal(false)
   const [sql, setSql] = createSignal("-- Write your SQL query here\nSELECT * FROM person LIMIT 10;")
   const [vimMode, setVimMode] = createSignal(false)
   const [queryState, setQueryState] = createSignal<QueryState>({
@@ -54,10 +55,11 @@ export default function SqlEditorPage() {
       setLoading(false)
       return
     }
-    
-    honoClient.spacetime.config.$get()
-      .then(res => res.json())
-      .then(data => {
+
+    honoClient.spacetime.config
+      .$get()
+      .then((res) => res.json())
+      .then((data) => {
         setDatabase(data.database)
       })
       .finally(() => setLoading(false))
@@ -77,9 +79,9 @@ export default function SqlEditorPage() {
       })
       return
     }
-    
+
     const startTime = performance.now()
-    setQueryState(prev => ({ ...prev, isLoading: true, result: null }))
+    setQueryState((prev) => ({ ...prev, isLoading: true, result: null }))
 
     try {
       const res = await honoClient.spacetime.sql.$post({
@@ -88,8 +90,8 @@ export default function SqlEditorPage() {
           database: database(),
         },
       })
-      const result = await res.json() as QueryResult
-      
+      const result = (await res.json()) as QueryResult
+
       setQueryState({
         result,
         isLoading: false,
@@ -124,20 +126,60 @@ export default function SqlEditorPage() {
   }
 
   return (
-    <div class="flex flex-col h-screen overflow-hidden bg-background">
+    <div class="flex h-full flex-col overflow-hidden bg-background">
       {/* Header / Toolbar */}
-      <header class="border-b border-border bg-card px-4 py-3 flex items-center justify-between shrink-0">
+      <header class="flex shrink-0 items-center justify-between border-border border-b bg-card px-4 py-2">
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <Show when={loading()}>
-              <div class="size-3 rounded-full bg-muted-foreground/50 animate-pulse" />
-              <span class="font-mono text-sm text-muted-foreground">Loading...</span>
+              <div class="size-2 animate-pulse bg-muted-foreground/50" />
+              <span class="font-mono text-muted-foreground text-xs">Loading...</span>
             </Show>
             <Show when={!loading()}>
-              <div class={`size-3 rounded-full ${database() ? 'bg-primary animate-pulse' : 'bg-destructive'} `} />
-              <span class="font-mono text-sm font-medium text-foreground">
-                {database() || "No database selected"}
-              </span>
+              <div class={`size-2 ${database() ? "bg-emerald-500" : "bg-red-500"} `} />
+              <Show
+                when={!database() && editingDatabase()}
+                fallback={
+                  <button
+                    class="font-medium font-mono text-foreground text-xs hover:underline"
+                    onClick={() => !database() && setEditingDatabase(true)}
+                  >
+                    {database() || "No database selected"}
+                  </button>
+                }
+              >
+                <input
+                  type="text"
+                  placeholder="Enter database name"
+                  class="bg-transparent px-0 py-0.5 font-mono text-xs outline-none focus:ring-0 focus:outline-none focus:border-primary"
+                  onBlur={(e) => {
+                    const value = e.currentTarget.value.trim()
+                    if (value) {
+                      setDatabase(value)
+                      const url = new URL(window.location.href)
+                      url.searchParams.set("db", value)
+                      window.history.replaceState({}, "", url)
+                    }
+                    setEditingDatabase(false)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const value = e.currentTarget.value.trim()
+                      if (value) {
+                        setDatabase(value)
+                        const url = new URL(window.location.href)
+                        url.searchParams.set("db", value)
+                        window.history.replaceState({}, "", url)
+                      }
+                      setEditingDatabase(false)
+                    }
+                    if (e.key === "Escape") {
+                      setEditingDatabase(false)
+                    }
+                  }}
+                  autofocus
+                />
+              </Show>
             </Show>
           </div>
           <div class="h-4 w-px bg-border" />
@@ -153,17 +195,13 @@ export default function SqlEditorPage() {
           >
             <span class="font-mono text-xs">VIM</span>
             <Show when={vimMode()}>
-              <span class="size-1.5 rounded-full bg-green-400" />
+              <span class="size-1.5 bg-emerald-400" />
             </Show>
           </Button>
-          
-          <div class="h-4 w-px bg-border mx-1" />
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearEditor}
-          >
+
+          <div class="mx-1 h-4 w-px bg-border" />
+
+          <Button variant="outline" size="sm" onClick={clearEditor}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="14"
@@ -182,15 +220,16 @@ export default function SqlEditorPage() {
             </svg>
             Clear
           </Button>
-          
+
           <Button
             variant="default"
             size="sm"
             onClick={executeQuery}
             disabled={queryState().isLoading}
-            class="gap-1.5 bg-primary hover:bg-primary/90"
+            class="gap-1.5"
           >
-            <Show when={queryState().isLoading}
+            <Show
+              when={queryState().isLoading}
               fallback={
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -208,7 +247,7 @@ export default function SqlEditorPage() {
               }
             >
               <svg
-                class="animate-spin size-3.5"
+                class="size-3.5 animate-spin"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -229,72 +268,64 @@ export default function SqlEditorPage() {
               </svg>
             </Show>
             Run
-            <kbd class="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-primary/30 bg-primary/10 px-1.5 font-mono text-[10px] font-medium text-primary-foreground/80 opacity-60">
-              <span class="text-xs">Cmd</span>↵
+            <kbd class="hidden h-5 items-center gap-1 border border-primary/30 bg-primary/10 px-1.5 font-medium font-mono text-[10px] text-primary-foreground/80 opacity-60 sm:inline-flex">
+              <span class="text-xs">⌘</span>⏎
             </kbd>
           </Button>
         </div>
       </header>
 
       {/* Main Content */}
-      <div class="flex-1 overflow-hidden">
-        <PanelGroup direction="column" class="h-full">
-          <Panel id="editor" initialSize={50} minSize={20} class="flex flex-col">
-            <Card class="m-2 flex-1 flex flex-col border-border/50 bg-card/50 overflow-hidden">
-              <div class="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/30">
-                <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <div class="flex flex-1 flex-col overflow-hidden bg-blue">
+        <Resizable orientation="vertical" class="h-full">
+          <ResizablePanel initialSize={0.5} minSize={0.2} class="overflow-hidden">
+            <Card class="m-0 flex flex-1 flex-col overflow-hidden border-0 border-border h-full">
+              <CardHeader class="flex shrink-0 flex-row items-center justify-between border-border border-b bg-muted/30 px-3 py-2 h-[33px]">
+                <CardTitle class="font-medium text-muted-foreground text-xs uppercase tracking-wider mb-0">
                   Editor
-                </span>
+                </CardTitle>
                 <Show when={vimMode()}>
-                  <span class="text-xs font-mono text-primary">-- NORMAL --</span>
+                  <span class="font-mono text-primary text-[11px]">-- NORMAL --</span>
                 </Show>
-              </div>
-              <div class="flex-1 overflow-hidden">
+              </CardHeader>
+              <div class="flex-1 overflow-hidden h-full">
                 <SqlEditor
                   value={sql()}
                   onChange={setSql}
                   onExecute={executeQuery}
                   vimMode={vimMode()}
-                  class="border-0 rounded-none"
+                  class="border-0  bg-[#282C34] focus:outline-0 focus:ring-0"
                 />
               </div>
             </Card>
-          </Panel>
+          </ResizablePanel>
 
-          <ResizeHandle class="h-1.5 bg-border/30 hover:bg-primary/30 transition-colors flex items-center justify-center">
-            <div class="w-8 h-1 rounded-full bg-border/50" />
-          </ResizeHandle>
+          <ResizableHandle />
 
-          <Panel id="results" initialSize={50} minSize={20} class="flex flex-col">
+          <ResizablePanel initialSize={0.5} minSize={0.2} class="overflow-hidden">
             <ResultPanel
               result={queryState().result}
               isLoading={queryState().isLoading}
               executionTime={queryState().executionTime}
               onClear={clearResults}
             />
-          </Panel>
-        </PanelGroup>
+          </ResizablePanel>
+        </Resizable>
       </div>
 
       {/* Status Bar */}
-      <footer class="border-t border-border bg-card px-4 py-1.5 flex items-center justify-between shrink-0 text-xs">
+      <footer class="flex shrink-0 items-center justify-between border-border border-t bg-card px-4 py-1.5 text-xs">
         <div class="flex items-center gap-4 text-muted-foreground">
           <Show when={queryState().lastExecutedAt}>
-            <span>
-              Last run: {queryState().lastExecutedAt?.toLocaleTimeString()}
-            </span>
+            <span>Last run: {queryState().lastExecutedAt?.toLocaleTimeString()}</span>
           </Show>
         </div>
         <div class="flex items-center gap-4 text-muted-foreground">
           <Show when={queryState().executionTime > 0}>
-            <span class="font-mono">
-              {queryState().executionTime}ms
-            </span>
+            <span class="font-mono">{queryState().executionTime}ms</span>
           </Show>
           <Show when={queryState().result?.data}>
-            <span class="font-mono">
-              {queryState().result?.data?.numRows ?? 0} rows
-            </span>
+            <span class="font-mono">{queryState().result?.data?.numRows ?? 0} rows</span>
           </Show>
         </div>
       </footer>

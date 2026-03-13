@@ -1,26 +1,24 @@
 # spacetimedb-studio
 
-To install dependencies:
+A development studio for SpacetimeDB.
+
+## Getting Started
 
 ```bash
 bun install
 ```
 
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.3.10. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
-
-# Build Pipeline
-
 ## Development
 
-cd packages/cli && bun run src/cli.ts vike-ts
+```bash
+bun run dev           # Run all apps
+bun run dev:studio    # Run studio app only
+bun run dev:cli      # Run CLI in dev mode
+```
 
-## Production binary
+## Build
 
-cd packages/cli && bun run build
-./dist/spacetime-studio my-database
+```bash
+bun run build        # Build all apps
+cd packages/cli && bun run build  # Build CLI binary
+```

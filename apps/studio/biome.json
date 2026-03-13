@@ -7,6 +7,15 @@
     "indentWidth": 2,
     "lineWidth": 100
   },
+  "css": {
+    "parser": {
+      "cssModules": true,
+      "allowWrongLineComments": false
+    },
+    "linter": {
+      "enabled": false
+    }
+  },
   "files": {
     "includes": ["**", "!dist/**/*", "!**/*.js", "!**/*.cjs", "!**/*.mjs", "!src/route-tree.gen.ts"]
   },

@@ -20,6 +20,7 @@
     "@codemirror/state": "^6.6.0",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.40.0",
+    "@corvu/resizable": "^0.2.5",
     "@kobalte/core": "^0.13.11",
     "@photonjs/hono": "^0.1.12",
     "@replit/codemirror-vim": "^6.2.1",

@@ -6,7 +6,6 @@ const app = new Hono()
 
 app.use(cors())
 
-export const appRouter = app
-  .route("/spacetime", spacetimeController)
+export const appRouter = app.route("/spacetime", spacetimeController)
 
 export type AppRouter = typeof appRouter
