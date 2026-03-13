@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { privateEnv } from "@/env.private"
 import { ApiError } from "@/server/lib/error"
-import { describeDatabase, executeSql } from "./spacetime.service"
+import { describeDatabase, executeMultipleStatements } from "./spacetime.service"
 
 const sqlRequestSchema = z.object({
   sql: z.string().min(1),
@@ -26,15 +26,15 @@ export const spacetimeController = new Hono()
     const { sql, database } = parsed.data
 
     try {
-      const result = await executeSql(database, sql)
+      const results = await executeMultipleStatements(database, sql)
       return c.json({
         success: true,
-        data: result,
+        results,
         error: null,
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Query execution failed"
-      throw ApiError.BadRequest(message, { error: err })
+      throw ApiError.BadRequest(message)
     }
   })
   .get("/describe", async (c) => {
@@ -53,6 +53,6 @@ export const spacetimeController = new Hono()
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to describe database"
-      throw ApiError.BadRequest(message, { error: err })
+      throw ApiError.BadRequest(message)
     }
   })

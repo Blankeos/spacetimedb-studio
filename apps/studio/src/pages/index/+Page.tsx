@@ -1,6 +1,6 @@
 import { createEffect, createSignal, Show } from "solid-js"
 import { useMetadata } from "vike-metadata-solid"
-import { ResultPanel } from "@/components/sql-editor/ResultPanel"
+import { ResultPanel, type StatementResult } from "@/components/sql-editor/ResultPanel"
 import { SqlEditor } from "@/components/sql-editor/SqlEditor"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,18 +8,8 @@ import { Resizable, ResizableHandle, ResizablePanel } from "@/components/ui/resi
 import { honoClient } from "@/lib/hono-client"
 import getTitle from "@/utils/get-title"
 
-interface QueryResult {
-  success: boolean
-  data: {
-    rows: Record<string, unknown>[]
-    columns: string[]
-    numRows: number
-  } | null
-  error: string | null
-}
-
 interface QueryState {
-  result: QueryResult | null
+  results: StatementResult[] | null
   isLoading: boolean
   executionTime: number
   lastExecutedAt: Date | null
@@ -42,7 +32,7 @@ export default function SqlEditorPage() {
   const [sql, setSql] = createSignal("-- Write your SQL query here\nSELECT * FROM person LIMIT 10;")
   const [vimMode, setVimMode] = createSignal(false)
   const [queryState, setQueryState] = createSignal<QueryState>({
-    result: null,
+    results: null,
     isLoading: false,
     executionTime: 0,
     lastExecutedAt: null,
@@ -68,11 +58,14 @@ export default function SqlEditorPage() {
   const executeQuery = async () => {
     if (!database()) {
       setQueryState({
-        result: {
-          success: false,
-          data: null,
-          error: "No database selected. Add ?db=<database> to the URL.",
-        },
+        results: [
+          {
+            statement: "",
+            success: false,
+            data: null,
+            error: "No database selected. Add ?db=<database> to the URL.",
+          },
+        ],
         isLoading: false,
         executionTime: 0,
         lastExecutedAt: new Date(),
@@ -81,7 +74,7 @@ export default function SqlEditorPage() {
     }
 
     const startTime = performance.now()
-    setQueryState((prev) => ({ ...prev, isLoading: true, result: null }))
+    setQueryState((prev) => ({ ...prev, isLoading: true, results: null }))
 
     try {
       const res = await honoClient.spacetime.sql.$post({
@@ -90,21 +83,24 @@ export default function SqlEditorPage() {
           database: database(),
         },
       })
-      const result = (await res.json()) as QueryResult
+      const data = await res.json()
 
       setQueryState({
-        result,
+        results: data.results,
         isLoading: false,
         executionTime: Math.round(performance.now() - startTime),
         lastExecutedAt: new Date(),
       })
     } catch (error) {
       setQueryState({
-        result: {
-          success: false,
-          data: null,
-          error: error instanceof Error ? error.message : "Failed to execute query",
-        },
+        results: [
+          {
+            statement: "",
+            success: false,
+            data: null,
+            error: error instanceof Error ? error.message : "Failed to execute query",
+          },
+        ],
         isLoading: false,
         executionTime: Math.round(performance.now() - startTime),
         lastExecutedAt: new Date(),
@@ -114,7 +110,7 @@ export default function SqlEditorPage() {
 
   const clearResults = () => {
     setQueryState({
-      result: null,
+      results: null,
       isLoading: false,
       executionTime: 0,
       lastExecutedAt: null,
@@ -141,6 +137,7 @@ export default function SqlEditorPage() {
                 when={!database() && editingDatabase()}
                 fallback={
                   <button
+                    type="button"
                     class="font-medium font-mono text-foreground text-xs hover:underline"
                     onClick={() => !database() && setEditingDatabase(true)}
                   >
@@ -151,7 +148,7 @@ export default function SqlEditorPage() {
                 <input
                   type="text"
                   placeholder="Enter database name"
-                  class="bg-transparent px-0 py-0.5 font-mono text-xs outline-none focus:ring-0 focus:outline-none focus:border-primary"
+                  class="bg-transparent px-0 py-0.5 font-mono text-xs outline-none focus:border-primary focus:outline-none focus:ring-0"
                   onBlur={(e) => {
                     const value = e.currentTarget.value.trim()
                     if (value) {
@@ -279,22 +276,22 @@ export default function SqlEditorPage() {
       <div class="flex flex-1 flex-col overflow-hidden bg-blue">
         <Resizable orientation="vertical" class="h-full">
           <ResizablePanel initialSize={0.5} minSize={0.2} class="overflow-hidden">
-            <Card class="m-0 flex flex-1 flex-col overflow-hidden border-0 border-border h-full">
-              <CardHeader class="flex shrink-0 flex-row items-center justify-between border-border border-b bg-muted/30 px-3 py-2 h-[33px]">
-                <CardTitle class="font-medium text-muted-foreground text-xs uppercase tracking-wider mb-0">
+            <Card class="m-0 flex h-full flex-1 flex-col overflow-hidden border-0 border-border">
+              <CardHeader class="flex h-[33px] shrink-0 flex-row items-center justify-between border-border border-b bg-muted/30 px-3 py-2">
+                <CardTitle class="mb-0 font-medium text-muted-foreground text-xs uppercase tracking-wider">
                   Editor
                 </CardTitle>
                 <Show when={vimMode()}>
-                  <span class="font-mono text-primary text-[11px]">-- NORMAL --</span>
+                  <span class="font-mono text-[11px] text-primary">-- NORMAL --</span>
                 </Show>
               </CardHeader>
-              <div class="flex-1 overflow-hidden h-full">
+              <div class="h-full flex-1 overflow-hidden">
                 <SqlEditor
                   value={sql()}
                   onChange={setSql}
                   onExecute={executeQuery}
                   vimMode={vimMode()}
-                  class="border-0  bg-[#282C34] focus:outline-0 focus:ring-0"
+                  class="border-0 bg-[#282C34] focus:outline-0 focus:ring-0"
                 />
               </div>
             </Card>
@@ -304,7 +301,7 @@ export default function SqlEditorPage() {
 
           <ResizablePanel initialSize={0.5} minSize={0.2} class="overflow-hidden">
             <ResultPanel
-              result={queryState().result}
+              results={queryState().results}
               isLoading={queryState().isLoading}
               executionTime={queryState().executionTime}
               onClear={clearResults}
@@ -324,8 +321,10 @@ export default function SqlEditorPage() {
           <Show when={queryState().executionTime > 0}>
             <span class="font-mono">{queryState().executionTime}ms</span>
           </Show>
-          <Show when={queryState().result?.data}>
-            <span class="font-mono">{queryState().result?.data?.numRows ?? 0} rows</span>
+          <Show when={queryState().results && queryState().results!.length > 0}>
+            <span class="font-mono">
+              {queryState().results?.reduce((sum, r) => sum + (r.data?.numRows ?? 0), 0) ?? 0} rows
+            </span>
           </Show>
         </div>
       </footer>

@@ -1,11 +1,105 @@
-import { spawn } from "child_process"
+import { spawn } from "node:child_process"
 
-function stripSqlComments(sql: string): string {
-  return sql
-    .split("\n")
-    .filter((line) => !line.trim().startsWith("--"))
-    .join("\n")
-    .trim()
+export interface StatementResult {
+  statement: string
+  success: boolean
+  data: {
+    rows: Record<string, unknown>[]
+    columns: string[]
+    numRows: number
+  } | null
+  error: string | null
+}
+
+interface ParsedStatement {
+  text: string
+  startLine: number
+}
+
+function parseSqlStatements(sql: string): ParsedStatement[] {
+  const statements: ParsedStatement[] = []
+  let current = ""
+  let inString = false
+  let stringChar = ""
+  let i = 0
+  let startLine = 1
+  let currentLine = 1
+
+  const isCommentStart = (pos: number) => sql[pos] === "-" && sql[pos + 1] === "-"
+  const isBlockCommentStart = (pos: number) => sql[pos] === "/" && sql[pos + 1] === "*"
+  const isBlockCommentEnd = (pos: number) => sql[pos] === "*" && sql[pos + 1] === "/"
+
+  while (i < sql.length) {
+    if (!inString && isCommentStart(i)) {
+      while (i < sql.length && sql[i] !== "\n") {
+        i++
+      }
+      continue
+    }
+
+    if (!inString && isBlockCommentStart(i)) {
+      i += 2
+      while (i < sql.length - 1 && !isBlockCommentEnd(i)) {
+        if (sql[i] === "\n") currentLine++
+        i++
+      }
+      i += 2
+      continue
+    }
+
+    const char = sql[i]
+
+    if (!inString && (char === "'" || char === '"')) {
+      inString = true
+      stringChar = char
+      current += char
+      i++
+      continue
+    }
+
+    if (inString && char === stringChar) {
+      if (sql[i + 1] === stringChar) {
+        current += char + sql[i + 1]
+        i += 2
+        continue
+      }
+      inString = false
+      current += char
+      i++
+      continue
+    }
+
+    if (char === "\n") {
+      currentLine++
+    }
+
+    if (!inString && char === ";") {
+      const trimmed = current.trim()
+      if (trimmed.length > 0) {
+        statements.push({
+          text: `${trimmed};`,
+          startLine,
+        })
+      }
+      current = ""
+      startLine = currentLine
+      i++
+      continue
+    }
+
+    current += char
+    i++
+  }
+
+  const trimmed = current.trim()
+  if (trimmed.length > 0) {
+    statements.push({
+      text: trimmed,
+      startLine,
+    })
+  }
+
+  return statements
 }
 
 function parseTableOutput(output: string): { rows: Record<string, unknown>[]; columns: string[] } {
@@ -59,19 +153,12 @@ function parseTableOutput(output: string): { rows: Record<string, unknown>[]; co
   return { rows, columns }
 }
 
-export async function executeSql(
+async function executeSqlRaw(
   database: string,
   sql: string
 ): Promise<{ rows: Record<string, unknown>[]; columns: string[] }> {
   return new Promise((resolve, reject) => {
-    const cleanSql = stripSqlComments(sql)
-
-    if (!cleanSql) {
-      reject(new Error("Empty query after removing comments"))
-      return
-    }
-
-    const child = spawn("spacetime", ["sql", database, cleanSql], {
+    const child = spawn("spacetime", ["sql", database, sql], {
       stdio: ["ignore", "pipe", "pipe"],
     })
 
@@ -101,6 +188,58 @@ export async function executeSql(
       reject(err)
     })
   })
+}
+
+async function executeSingleStatement(
+  database: string,
+  statement: string
+): Promise<StatementResult> {
+  try {
+    const result = await executeSqlRaw(database, statement)
+    return {
+      statement,
+      success: true,
+      data: {
+        rows: result.rows,
+        columns: result.columns,
+        numRows: result.rows.length,
+      },
+      error: null,
+    }
+  } catch (err) {
+    return {
+      statement,
+      success: false,
+      data: null,
+      error: err instanceof Error ? err.message : "Query execution failed",
+    }
+  }
+}
+
+export async function executeMultipleStatements(
+  database: string,
+  sql: string
+): Promise<StatementResult[]> {
+  const statements = parseSqlStatements(sql)
+
+  if (statements.length === 0) {
+    return [
+      {
+        statement: "",
+        success: false,
+        data: null,
+        error: "No valid SQL statements found",
+      },
+    ]
+  }
+
+  const results: StatementResult[] = []
+  for (const stmt of statements) {
+    const result = await executeSingleStatement(database, stmt.text)
+    results.push(result)
+  }
+
+  return results
 }
 
 interface SpacetimeDescribe {

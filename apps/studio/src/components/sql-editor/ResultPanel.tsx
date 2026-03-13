@@ -1,9 +1,11 @@
 import { type Component, For, Show } from "solid-js"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/utils/cn"
 
-interface QueryResult {
+export interface StatementResult {
+  statement: string
   success: boolean
   data: {
     rows: Record<string, unknown>[]
@@ -14,15 +16,25 @@ interface QueryResult {
 }
 
 interface ResultPanelProps {
-  result: QueryResult | null
+  results: StatementResult[] | null
   isLoading: boolean
   executionTime: number
   onClear: () => void
 }
 
+function getStatementLabel(statement: string): string {
+  const trimmed = statement.trim()
+  const firstLine = trimmed.split("\n")[0]?.trim() ?? trimmed
+  const truncated = firstLine.length > 40 ? `${firstLine.slice(0, 40)}...` : firstLine
+  return truncated.replace(/;$/, "")
+}
+
 export const ResultPanel: Component<ResultPanelProps> = (props) => {
-  const copyAsCsv = () => {
-    const data = props.result?.data
+  const hasResults = () => props.results && props.results.length > 0
+  const hasMultipleResults = () => props.results && props.results.length > 1
+
+  const copyAsCsv = (result: StatementResult) => {
+    const data = result.data
     if (!data) return
 
     const columns = data.columns
@@ -46,6 +58,81 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
     navigator.clipboard.writeText(csv)
   }
 
+  const renderResultTable = (result: StatementResult) => (
+    <Show
+      when={result.success && result.data}
+      fallback={
+        <div class="flex h-full flex-col items-center justify-center p-4">
+          <div class="flex items-start gap-3 border border-destructive/30 bg-destructive/10 p-4 text-destructive">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="mt-0.5 shrink-0"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-sm">Query Error</p>
+              <p class="mt-1 break-words font-mono text-sm opacity-90">
+                {result.error || "An unknown error occurred"}
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <div class="overflow-auto">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 z-10 bg-card">
+            <tr class="border-border border-b">
+              <For each={result.data?.columns}>
+                {(column) => (
+                  <th class="whitespace-nowrap border-border border-r bg-muted/30 px-4 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider last:border-r-0">
+                    {column}
+                  </th>
+                )}
+              </For>
+            </tr>
+          </thead>
+          <tbody>
+            <For each={result.data?.rows}>
+              {(row, index) => (
+                <tr
+                  class={cn(
+                    "border-border/50 border-b transition-colors hover:bg-accent/30",
+                    index() % 2 === 0 ? "bg-transparent" : "bg-muted/10"
+                  )}
+                >
+                  <For each={result.data?.columns}>
+                    {(column) => (
+                      <td class="max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap border-border/30 border-r px-4 py-2 font-mono text-foreground/90 text-xs last:border-r-0">
+                        <CellValue value={row[column]} />
+                      </td>
+                    )}
+                  </For>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
+        <Show when={result.data && result.data.numRows === 0}>
+          <div class="flex items-center justify-center py-12 text-muted-foreground">
+            <span class="text-sm">No rows returned</span>
+          </div>
+        </Show>
+      </div>
+    </Show>
+  )
+
   return (
     <Card class="m-0 flex h-full flex-1 flex-col overflow-hidden border-0 border-border bg-card">
       <CardHeader class="flex h-[33px] shrink-0 flex-row items-center justify-between border-border border-b bg-muted/30 px-3 py-2">
@@ -53,15 +140,7 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
           Results
         </CardTitle>
         <div class="flex items-center gap-2">
-          <Show when={props.result && !props.isLoading}>
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={copyAsCsv}
-              class="h-6 px-2 text-muted-foreground hover:text-foreground"
-            >
-              Copy CSV
-            </Button>
+          <Show when={hasResults() && !props.isLoading}>
             <Button
               variant="ghost"
               size="xs"
@@ -86,7 +165,7 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
           </div>
         </Show>
 
-        <Show when={!props.isLoading && !props.result}>
+        <Show when={!props.isLoading && !hasResults()}>
           <div class="h-full">
             <div class="flex h-full flex-col items-center justify-center text-muted-foreground">
               <svg
@@ -109,76 +188,95 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
           </div>
         </Show>
 
-        <Show when={!props.isLoading && props.result?.success && props.result.data}>
-          <div class="overflow-auto">
-            <table class="w-full text-sm">
-              <thead class="sticky top-0 z-10 bg-card">
-                <tr class="border-border border-b">
-                  <For each={props.result?.data?.columns}>
-                    {(column) => (
-                      <th class="whitespace-nowrap border-border border-r bg-muted/30 px-4 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider last:border-r-0">
-                        {column}
-                      </th>
-                    )}
-                  </For>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={props.result?.data?.rows}>
-                  {(row, index) => (
-                    <tr
-                      class={cn(
-                        "border-border/50 border-b transition-colors hover:bg-accent/30",
-                        index() % 2 === 0 ? "bg-transparent" : "bg-muted/10"
-                      )}
-                    >
-                      <For each={props.result?.data?.columns}>
-                        {(column) => (
-                          <td class="max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap border-border/30 border-r px-4 py-2 font-mono text-foreground/90 text-xs last:border-r-0">
-                            <CellValue value={row[column]} />
-                          </td>
-                        )}
-                      </For>
-                    </tr>
+        <Show when={!props.isLoading && hasResults()}>
+          <Show
+            when={hasMultipleResults()}
+            fallback={(() => {
+              const firstResult = () => props.results?.[0]
+              return (
+                <Show when={firstResult()}>
+                  {(result) => (
+                    <div class="flex h-full flex-col">
+                      <div class="flex shrink-0 items-center justify-between border-border border-b bg-muted/20 px-3 py-1.5">
+                        <span class="max-w-[50%] truncate font-mono text-muted-foreground text-xs">
+                          {getStatementLabel(result().statement)}
+                        </span>
+                        <Show when={result().success && result().data}>
+                          <span class="font-mono text-muted-foreground text-xs">
+                            {result().data?.numRows ?? 0} rows
+                          </span>
+                        </Show>
+                      </div>
+                      <div class="flex-1 overflow-auto">{renderResultTable(result())}</div>
+                    </div>
+                  )}
+                </Show>
+              )
+            })()}
+          >
+            <Tabs defaultValue="0" class="flex h-full flex-col">
+              <TabsList class="w-full justify-start">
+                <For each={props.results}>
+                  {(result, index) => (
+                    <TabsTrigger value={String(index())}>
+                      <span class="flex items-center gap-1.5">
+                        <Show
+                          when={result.success}
+                          fallback={<span class="size-1.5 rounded-full bg-red-500" />}
+                        >
+                          <span class="size-1.5 rounded-full bg-emerald-500" />
+                        </Show>
+                        {getStatementLabel(result.statement)}
+                      </span>
+                    </TabsTrigger>
                   )}
                 </For>
-              </tbody>
-            </table>
-            <Show when={props.result?.data && props.result.data.numRows === 0}>
-              <div class="flex items-center justify-center py-12 text-muted-foreground">
-                <span class="text-sm">No rows returned</span>
-              </div>
-            </Show>
-          </div>
-        </Show>
-
-        <Show when={!props.isLoading && props.result && !props.result.success}>
-          <div class="flex h-full flex-col items-center justify-center p-4">
-            <div class="flex items-start gap-3 border border-destructive/30 bg-destructive/10 p-4 text-destructive">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="mt-0.5 shrink-0"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              <div class="min-w-0 flex-1">
-                <p class="font-medium text-sm">Query Error</p>
-                <p class="mt-1 break-words font-mono text-sm opacity-90">
-                  {props.result?.error || "An unknown error occurred"}
-                </p>
-              </div>
-            </div>
-          </div>
+              </TabsList>
+              <For each={props.results}>
+                {(result, index) => (
+                  <TabsContent value={String(index())} class="flex-1 overflow-auto">
+                    <div class="flex h-full flex-col">
+                      <div class="flex shrink-0 items-center justify-between border-border border-b bg-muted/20 px-3 py-1.5">
+                        <div class="flex items-center gap-2">
+                          <Show
+                            when={result.success}
+                            fallback={
+                              <span class="rounded bg-red-500/10 px-1.5 py-0.5 font-mono text-[10px] text-red-400">
+                                Error
+                              </span>
+                            }
+                          >
+                            <span class="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[10px] text-emerald-400">
+                              Success
+                            </span>
+                          </Show>
+                          <span class="max-w-[300px] truncate font-mono text-muted-foreground text-xs">
+                            {getStatementLabel(result.statement)}
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <Show when={result.success && result.data}>
+                            <span class="font-mono text-muted-foreground text-xs">
+                              {result.data?.numRows ?? 0} rows
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => copyAsCsv(result)}
+                              class="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                            >
+                              Copy CSV
+                            </Button>
+                          </Show>
+                        </div>
+                      </div>
+                      <div class="flex-1 overflow-auto">{renderResultTable(result)}</div>
+                    </div>
+                  </TabsContent>
+                )}
+              </For>
+            </Tabs>
+          </Show>
         </Show>
       </CardContent>
     </Card>
@@ -203,7 +301,6 @@ function CellValue(props: { value: unknown }) {
   }
 
   if (typeof value === "string") {
-    // Check if it looks like a date
     if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
       return <span class="text-amber-400/80">{value}</span>
     }
