@@ -1,0 +1,22 @@
+{
+  "name": "spacetimedb-studio",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "refs:clone": "bun scripts/fetch-references.ts clone",
+    "refs:pull": "bun scripts/fetch-references.ts pull",
+    "dev": "bun run --filter './apps/*' dev",
+    "build": "bun run --filter './apps/*' build",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.6",
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}
