@@ -1,6 +1,5 @@
 export const privateEnv = {
-  /** Development | Production */
-  PORT: (process.env.PORT || 5173) as number,
-  /** Development | Production */
+  PORT: (process.env.PORT || 5555) as number,
   NODE_ENV: (process.env.NODE_ENV ?? "development") as "development" | "production" | "test",
+  SPACETIME_DB: process.env.SPACETIME_DB || "",
 }

@@ -12,9 +12,7 @@ export { pageRoutes, getRoute, useParams };
 export type { PageRoute, UseParamsResult };
 
 const pageRoutes = [
-  "/",
-  "/dashboard",
-  "/dashboard/settings"
+  "/"
 ] as const;
 
 type PageRoute = typeof pageRoutes[number];

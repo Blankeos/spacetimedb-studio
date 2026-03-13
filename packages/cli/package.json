@@ -3,12 +3,18 @@
   "version": "0.0.1",
   "type": "module",
   "bin": {
-    "spacetimedb-studio": "./dist/cli.js"
+    "spacetime-studio": "./dist/spacetime-studio"
   },
   "scripts": {
     "dev": "bun run src/cli.ts",
-    "build": "bun build ./src/cli.ts --outdir ./dist --target node",
+    "build:cli": "bun build ./src/cli.ts --compile --outfile ./dist/spacetime-studio --minify",
+    "build:copy-studio": "cp -r ../../apps/studio/dist ./dist/studio/dist",
+    "build": "bun run build:cli && bun run build:copy-studio",
     "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^12.1.0"
   },
   "devDependencies": {
     "@types/bun": "^1.3.10",

@@ -10,9 +10,10 @@
     "refs:clone": "bun scripts/fetch-references.ts clone",
     "refs:pull": "bun scripts/fetch-references.ts pull",
     "dev": "bun run --filter './apps/*' dev",
-    "dev:runtime": "bun run --filter './apps/runtime' dev",
-    "dev:cli": "bun run --filter './apps/cli' dev",
+    "dev:studio": "bun run --filter './apps/studio' dev",
+    "dev:cli": "bun run --filter './packages/cli' dev",
     "build": "bun run --filter './apps/*' build",
+    "cli": "cd packages/cli && ./dist/spacetime-studio",
     "lint": "biome check .",
     "lint:fix": "biome check --write ."
   },
