@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { privateEnv } from "@/env.private"
 import { ApiError } from "@/server/lib/error"
-import { describeDatabase, executeMultipleStatements } from "./spacetime.service"
+import { describeDatabase, executeMultipleStatements, getTablesWithCounts } from "./spacetime.service"
 
 const sqlRequestSchema = z.object({
   sql: z.string().min(1),
@@ -53,6 +53,25 @@ export const spacetimeController = new Hono()
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to describe database"
+      throw ApiError.BadRequest(message)
+    }
+  })
+  .get("/tables", async (c) => {
+    const db = c.req.query("db")
+
+    if (!db) {
+      throw ApiError.BadRequest("Database name is required")
+    }
+
+    try {
+      const result = await getTablesWithCounts(db)
+      return c.json({
+        success: true,
+        data: result,
+        error: null,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to get tables"
       throw ApiError.BadRequest(message)
     }
   })

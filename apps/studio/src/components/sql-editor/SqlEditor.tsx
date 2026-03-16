@@ -1,8 +1,15 @@
 import { history, historyKeymap, toggleLineComment } from "@codemirror/commands"
 import { StandardSQL, sql } from "@codemirror/lang-sql"
-import { EditorState, type Extension, Prec } from "@codemirror/state"
+import { EditorState, type Extension, Prec, RangeSet, RangeSetBuilder } from "@codemirror/state"
 import { oneDark } from "@codemirror/theme-one-dark"
-import { EditorView, keymap } from "@codemirror/view"
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  keymap,
+  ViewPlugin,
+  type ViewUpdate,
+} from "@codemirror/view"
 import { vim } from "@replit/codemirror-vim"
 import { createEffect, on, onMount } from "solid-js"
 
@@ -15,6 +22,46 @@ type SqlEditorProps = {
   class?: string
 }
 
+const selectedLineHighlight = Decoration.line({
+  attributes: { class: "cm-selected-line" },
+})
+
+function selectedLinePlugin() {
+  return ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet
+
+      constructor(view: EditorView) {
+        this.decorations = this.computeDecorations(view)
+      }
+
+      update(update: ViewUpdate) {
+        if (update.docChanged || update.selectionSet || update.viewportChanged) {
+          this.decorations = this.computeDecorations(update.view)
+        }
+      }
+
+      computeDecorations(view: EditorView): DecorationSet {
+        const builder = new RangeSetBuilder<Decoration>()
+        const selection = view.state.selection.main
+
+        if (!selection.empty) {
+          const fromLine = view.state.doc.lineAt(selection.from).number
+          const toLine = view.state.doc.lineAt(selection.to).number
+          for (let i = fromLine; i <= toLine; i++) {
+            const lineStart = view.state.doc.line(i).from
+            builder.add(lineStart, lineStart, selectedLineHighlight)
+          }
+        }
+        return builder.finish()
+      }
+    },
+    {
+      decorations: (v) => v.decorations,
+    }
+  )
+}
+
 const editorTheme = EditorView.theme({
   "&": { height: "100%" },
   ".cm-scroller": { overflow: "auto" },
@@ -25,6 +72,9 @@ const editorTheme = EditorView.theme({
   },
   ".cm-selectionBackground": {
     background: "rgba(134, 239, 172, 0.2) !important",
+  },
+  ".cm-selected-line": {
+    backgroundColor: "rgba(134, 239, 172, 0.15) !important",
   },
 })
 
@@ -75,6 +125,7 @@ export function SqlEditor(props: SqlEditorProps) {
       ),
       EditorView.lineWrapping,
       EditorState.readOnly.of(props.readOnly ?? false),
+      selectedLinePlugin(),
     ]
 
     if (vimMode) {

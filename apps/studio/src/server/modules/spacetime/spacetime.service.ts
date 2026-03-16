@@ -307,3 +307,33 @@ export async function describeDatabase(database: string): Promise<SpacetimeDescr
     })
   })
 }
+
+export interface TableInfo {
+  name: string
+  rowCount: number | null
+  type: "user" | "system"
+}
+
+export async function getTablesWithCounts(database: string): Promise<TableInfo[]> {
+  const describe = await describeDatabase(database)
+
+  const tables: TableInfo[] = describe.tables.map((table) => ({
+    name: table.name,
+    rowCount: null,
+    type: "table_type" in table && table.table_type && "User" in table.table_type ? "user" : "system",
+  }))
+
+  for (const table of tables) {
+    try {
+      const result = await executeSqlRaw(database, `SELECT COUNT(*) FROM ${table.name};`)
+      if (result.rows.length > 0 && result.columns.includes("count(*)")) {
+        const countValue = result.rows[0]["count(*)"]
+        table.rowCount = typeof countValue === "number" ? countValue : parseInt(String(countValue), 10)
+      }
+    } catch {
+      table.rowCount = null
+    }
+  }
+
+  return tables
+}

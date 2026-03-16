@@ -47,27 +47,39 @@ export const SidebarContent: Component<SidebarContentProps> = (props) => {
   )
 }
 
-export interface SidebarItemProps extends ComponentProps<"button"> {
+export interface SidebarItemProps {
   active?: boolean
   icon?: (props: { class?: string }) => JSX.Element
+  href?: string
+  class?: string
+  children?: JSX.Element
+  onClick?: () => void
 }
 
 export const SidebarItem: Component<SidebarItemProps> = (props) => {
-  const [local, others] = splitProps(props, ["class", "active", "icon", "children"])
+  const [local, others] = splitProps(props, ["class", "active", "icon", "children", "href", "onClick"])
   const Icon = local.icon
 
+  const className = cn(
+    "flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors",
+    "hover:bg-accent hover:text-accent-foreground",
+    local.active
+      ? "border-l-2 border-l-primary bg-accent text-accent-foreground"
+      : "border-l-2 border-l-transparent text-muted-foreground",
+    local.class
+  )
+
+  if (local.href) {
+    return (
+      <a href={local.href} class={className}>
+        {Icon && <Icon class="size-4 shrink-0" />}
+        <span class="truncate">{local.children}</span>
+      </a>
+    )
+  }
+
   return (
-    <button
-      class={cn(
-        "flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors",
-        "hover:bg-accent hover:text-accent-foreground",
-        local.active
-          ? "border-l-2 border-l-primary bg-accent text-accent-foreground"
-          : "border-l-2 border-l-transparent text-muted-foreground",
-        local.class
-      )}
-      {...others}
-    >
+    <button type="button" class={className} onClick={local.onClick}>
       {Icon && <Icon class="size-4 shrink-0" />}
       <span class="truncate">{local.children}</span>
     </button>
