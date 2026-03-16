@@ -1,5 +1,5 @@
-import { type Component, For, Show } from "solid-js"
 import { useClipboard } from "bagon-hooks"
+import { type Component, For, Show } from "solid-js"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -219,11 +219,26 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
                         <span class="max-w-[50%] truncate font-mono text-muted-foreground text-xs">
                           {getStatementLabel(result().statement)}
                         </span>
-                        <Show when={result().success && result().data}>
-                          <span class="font-mono text-muted-foreground text-xs">
-                            {result().data?.numRows ?? 0} rows
-                          </span>
-                        </Show>
+                        <div class="flex items-center gap-2">
+                          <Show when={result().success && result().data}>
+                            <span class="font-mono text-muted-foreground text-xs">
+                              {result().data?.numRows ?? 0} rows
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => copyAsCsv(result())}
+                              class="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                            >
+                              <Show when={clipboard.copied()} fallback="Copy CSV">
+                                <span class="flex items-center gap-1 text-emerald-500">
+                                  <CheckIcon class="size-3" />
+                                  Copied
+                                </span>
+                              </Show>
+                            </Button>
+                          </Show>
+                        </div>
                       </div>
                       <div class="flex-1 overflow-auto">{renderResultTable(result())}</div>
                     </div>
@@ -283,10 +298,7 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
                               onClick={() => copyAsCsv(result)}
                               class="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
                             >
-                              <Show
-                                when={clipboard.copied()}
-                                fallback="Copy CSV"
-                              >
+                              <Show when={clipboard.copied()} fallback="Copy CSV">
                                 <span class="flex items-center gap-1 text-emerald-500">
                                   <CheckIcon class="size-3" />
                                   Copied

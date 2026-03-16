@@ -281,9 +281,6 @@ export default function SqlEditorPage() {
                 <CardTitle class="mb-0 font-medium text-muted-foreground text-xs uppercase tracking-wider">
                   Editor
                 </CardTitle>
-                <Show when={vimMode()}>
-                  <span class="font-mono text-[11px] text-primary">-- NORMAL --</span>
-                </Show>
               </CardHeader>
               <div class="h-full flex-1 overflow-hidden">
                 <SqlEditor
