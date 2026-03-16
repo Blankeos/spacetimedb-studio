@@ -213,6 +213,21 @@ export function SqlEditor(props: SqlEditorProps) {
     })
   )
 
+  createEffect(
+    on(
+      () => props.value,
+      (value) => {
+        if (!view) return
+        const currentValue = view.state.doc.toString()
+        if (value !== currentValue) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: value },
+          })
+        }
+      }
+    )
+  )
+
   return (
     <div
       ref={editorRef}

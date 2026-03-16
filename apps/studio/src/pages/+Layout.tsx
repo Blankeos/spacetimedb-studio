@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/sidebar"
 import { DatabaseProvider, useDatabase } from "@/contexts/database"
 import { SidebarProvider, useSidebar } from "@/contexts/sidebar"
-import { ThemeProvider, themeInitScript, useThemeContext } from "@/contexts/theme"
+import { ThemeProvider, themeInitScript } from "@/contexts/theme"
 import { VimModeProvider } from "@/contexts/vim-mode"
 import {
   SpacetimeLogoIcon,
@@ -38,7 +38,8 @@ useMetadata.setGlobalDefaults({
   otherJSX: () => {
     return (
       <>
-        <link rel="icon" href="/icon-logo.svg" />
+        <link rel="icon" type="image/svg+xml" href="/icon-logo-dark.svg" class="icon-dark" />
+        <link rel="icon" type="image/svg+xml" href="/icon-logo-light.svg" class="icon-light" />
       </>
     )
   },

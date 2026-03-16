@@ -100,10 +100,6 @@ export default function SqlEditorPage() {
     })
   }
 
-  const clearEditor = () => {
-    setSql("")
-  }
-
   return (
     <div class="flex h-full flex-col overflow-hidden bg-background">
       <PageHeader
@@ -113,26 +109,6 @@ export default function SqlEditorPage() {
         onDatabaseChange={handleDatabaseChange}
       >
         <div class="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={clearEditor}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="mr-1.5"
-            >
-              <path d="M3 6h18" />
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-            </svg>
-            Clear
-          </Button>
-
           <Button
             variant="default"
             size="sm"

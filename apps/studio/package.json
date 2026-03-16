@@ -39,6 +39,7 @@
     "solid-js": "1.9.11",
     "solid-resizable-panels": "^0.5.4",
     "solid-sonner": "^0.2.8",
+    "spacetimedb": "^2.0.4",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.0",
     "tippy.js": "^6.3.7",

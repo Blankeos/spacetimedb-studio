@@ -194,20 +194,22 @@ body {
   }
 }
 
-.logo-path,
-.logo-circle {
-  fill: #060606;
-  stroke: #060606;
+.icon-light {
+  display: none;
 }
 
-.logo-circle {
-  fill: none;
+:root:not(.light) .icon-dark {
+  display: inline;
 }
 
-:root:not(.light) .logo-path {
-  fill: #F4F6FC;
+:root:not(.light) .icon-light {
+  display: none;
 }
 
-:root:not(.light) .logo-circle {
-  stroke: #F4F6FC;
+:root.light .icon-dark {
+  display: none;
+}
+
+:root.light .icon-light {
+  display: inline;
 }

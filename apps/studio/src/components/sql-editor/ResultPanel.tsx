@@ -162,6 +162,7 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
             <Button
               variant="ghost"
               size="xs"
+              type="button"
               onClick={props.onClear}
               class="h-6 px-2 text-muted-foreground hover:text-foreground"
             >
