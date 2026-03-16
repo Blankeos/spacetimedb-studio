@@ -1,10 +1,12 @@
-import { createEffect, createSignal, Show } from "solid-js"
+import { createSignal, Show } from "solid-js"
 import { useMetadata } from "vike-metadata-solid"
+import { PageHeader } from "@/components/page-header"
 import { ResultPanel, type StatementResult } from "@/components/sql-editor/ResultPanel"
 import { SqlEditor } from "@/components/sql-editor/SqlEditor"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Resizable, ResizableHandle, ResizablePanel } from "@/components/ui/resizable"
+import { useDatabase } from "@/contexts/database"
 import { honoClient } from "@/lib/hono-client"
 import getTitle from "@/utils/get-title"
 
@@ -15,22 +17,13 @@ interface QueryState {
   lastExecutedAt: Date | null
 }
 
-function getDatabaseFromUrl(): string | null {
-  if (typeof window === "undefined") return null
-  const params = new URLSearchParams(window.location.search)
-  return params.get("db")
-}
-
 export default function SqlEditorPage() {
   useMetadata({
     title: getTitle("SQL Editor"),
   })
 
-  const [database, setDatabase] = createSignal<string | null>(null)
-  const [loading, setLoading] = createSignal(true)
-  const [editingDatabase, setEditingDatabase] = createSignal(false)
+  const { database, setDatabase, loading } = useDatabase()
   const [sql, setSql] = createSignal("-- Write your SQL query here\nSELECT * FROM person LIMIT 10;")
-  const [vimMode, setVimMode] = createSignal(false)
   const [queryState, setQueryState] = createSignal<QueryState>({
     results: null,
     isLoading: false,
@@ -38,22 +31,12 @@ export default function SqlEditorPage() {
     lastExecutedAt: null,
   })
 
-  createEffect(() => {
-    const urlDb = getDatabaseFromUrl()
-    if (urlDb) {
-      setDatabase(urlDb)
-      setLoading(false)
-      return
-    }
-
-    honoClient.spacetime.config
-      .$get()
-      .then((res) => res.json())
-      .then((data) => {
-        setDatabase(data.database)
-      })
-      .finally(() => setLoading(false))
-  })
+  const handleDatabaseChange = (db: string) => {
+    setDatabase(db)
+    const url = new URL(window.location.href)
+    url.searchParams.set("db", db)
+    window.history.replaceState({}, "", url)
+  }
 
   const executeQuery = async () => {
     if (!database()) {
@@ -123,81 +106,13 @@ export default function SqlEditorPage() {
 
   return (
     <div class="flex h-full flex-col overflow-hidden bg-background">
-      {/* Header / Toolbar */}
-      <header class="flex shrink-0 items-center justify-between border-border border-b bg-card px-4 py-2">
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <Show when={loading()}>
-              <div class="size-2 animate-pulse bg-muted-foreground/50" />
-              <span class="font-mono text-muted-foreground text-xs">Loading...</span>
-            </Show>
-            <Show when={!loading()}>
-              <div class={`size-2 ${database() ? "bg-emerald-500" : "bg-red-500"} `} />
-              <Show
-                when={!database() && editingDatabase()}
-                fallback={
-                  <button
-                    type="button"
-                    class="font-medium font-mono text-foreground text-xs hover:underline"
-                    onClick={() => !database() && setEditingDatabase(true)}
-                  >
-                    {database() || "No database selected"}
-                  </button>
-                }
-              >
-                <input
-                  type="text"
-                  placeholder="Enter database name"
-                  class="bg-transparent px-0 py-0.5 font-mono text-xs outline-none focus:border-primary focus:outline-none focus:ring-0"
-                  onBlur={(e) => {
-                    const value = e.currentTarget.value.trim()
-                    if (value) {
-                      setDatabase(value)
-                      const url = new URL(window.location.href)
-                      url.searchParams.set("db", value)
-                      window.history.replaceState({}, "", url)
-                    }
-                    setEditingDatabase(false)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const value = e.currentTarget.value.trim()
-                      if (value) {
-                        setDatabase(value)
-                        const url = new URL(window.location.href)
-                        url.searchParams.set("db", value)
-                        window.history.replaceState({}, "", url)
-                      }
-                      setEditingDatabase(false)
-                    }
-                    if (e.key === "Escape") {
-                      setEditingDatabase(false)
-                    }
-                  }}
-                  autofocus
-                />
-              </Show>
-            </Show>
-          </div>
-          <div class="h-4 w-px bg-border" />
-          <span class="text-muted-foreground text-xs">SpacetimeDB Studio</span>
-        </div>
-
+      <PageHeader
+        title="SpacetimeDB Studio"
+        database={database()}
+        loading={loading()}
+        onDatabaseChange={handleDatabaseChange}
+      >
         <div class="flex items-center gap-2">
-          <Button
-            variant={vimMode() ? "default" : "outline"}
-            size="sm"
-            onClick={() => setVimMode(!vimMode())}
-            class="gap-1.5"
-          >
-            <span class="font-mono text-xs">VIM</span>
-            <Show when={vimMode()}>
-              <span class="size-1.5 bg-emerald-400" />
-            </Show>
-          </Button>
-
-          <div class="mx-1 h-4 w-px bg-border" />
-
           <Button variant="outline" size="sm" onClick={clearEditor}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -270,10 +185,10 @@ export default function SqlEditorPage() {
             </kbd>
           </Button>
         </div>
-      </header>
+      </PageHeader>
 
       {/* Main Content */}
-      <div class="flex flex-1 flex-col overflow-hidden bg-blue">
+      <div class="flex flex-1 flex-col overflow-hidden">
         <Resizable orientation="vertical" class="h-full">
           <ResizablePanel initialSize={0.5} minSize={0.2} class="overflow-hidden">
             <Card class="m-0 flex h-full flex-1 flex-col overflow-hidden border-0 border-border">
@@ -287,7 +202,6 @@ export default function SqlEditorPage() {
                   value={sql()}
                   onChange={setSql}
                   onExecute={executeQuery}
-                  vimMode={vimMode()}
                   class="border-0 bg-[#282C34] focus:outline-0 focus:ring-0"
                 />
               </div>

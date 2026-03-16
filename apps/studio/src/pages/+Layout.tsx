@@ -1,6 +1,9 @@
-import { createSignal, type FlowProps, Show } from "solid-js"
+import { createEffect, createSignal, type FlowProps, For, Show } from "solid-js"
 import { useMetadata } from "vike-metadata-solid"
+import { usePageContext } from "vike-solid/usePageContext"
 import "@/styles/app.css"
+import "@/lib/solid-tippy/tippy.css"
+import { openSettingsPalette, SettingsCommandPalette } from "@/components/settings-command-palette"
 import { Button } from "@/components/ui/button"
 import {
   Sidebar,
@@ -8,183 +11,347 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
-  SidebarItem,
+  SidebarTooltipItem,
 } from "@/components/ui/sidebar"
+import { DatabaseProvider, useDatabase } from "@/contexts/database"
+import { SidebarProvider, useSidebar } from "@/contexts/sidebar"
+import { ThemeProvider, themeInitScript } from "@/contexts/theme"
+import { VimModeProvider } from "@/contexts/vim-mode"
+import {
+  SpacetimeLogoIcon,
+  DocumentationIcon,
+  FileJsonIcon,
+  SettingsIcon,
+  SqlIcon,
+  TableIcon,
+} from "@/icons/sidebar-icons"
+import { honoClient } from "@/lib/hono-client"
+import { Tippy } from "@/lib/solid-tippy/tippy"
+import { getRoute } from "@/route-tree.gen"
+import { cn } from "@/utils/cn"
 import getTitle from "@/utils/get-title"
-
-// Icon components
-const DatabaseIcon = (props: { class?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    class={props.class}
-  >
-    <ellipse cx="12" cy="5" rx="9" ry="3" />
-    <path d="M3 5V19A9 3 0 0 0 21 19V5" />
-    <path d="M3 12A9 3 0 0 0 21 12" />
-  </svg>
-)
-
-const SqlIcon = (props: { class?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    class={props.class}
-  >
-    <polyline points="4 7 4 4 20 4 20 7" />
-    <line x1="9" y1="20" x2="15" y2="20" />
-    <line x1="12" y1="4" x2="12" y2="20" />
-  </svg>
-)
-
-const SettingsIcon = (props: { class?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    class={props.class}
-  >
-    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-)
-
-const TableIcon = (props: { class?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    class={props.class}
-  >
-    <path d="M12 3v18" />
-    <rect width="18" height="18" x="3" y="3" rx="0" ry="0" />
-    <path d="M3 9h18" />
-    <path d="M3 15h18" />
-  </svg>
-)
-
-const FileJsonIcon = (props: { class?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    class={props.class}
-  >
-    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-    <polyline points="14 2 14 8 20 8" />
-    <path d="M10 12a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1h-4z" />
-    <path d="M12 15h.01" />
-  </svg>
-)
-
-const DocumentationIcon = (props: { class?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    class={props.class}
-  >
-    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-    <polyline points="10 9 9 9 8 9" />
-  </svg>
-)
+import { isLinkActive } from "@/utils/is-link-active"
 
 useMetadata.setGlobalDefaults({
   title: getTitle("SQL Editor"),
   description: "SpacetimeDB Studio - SQL Editor with vim mode support",
+  otherJSX: () => {
+    return (
+      <>
+        <link rel="icon" href="/icon-logo.svg" />
+      </>
+    )
+  },
 })
 
-export default function RootLayout(props: FlowProps) {
-  const [collapsed, setCollapsed] = createSignal(false)
+const SearchIcon = (props: { class?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class={props.class}
+  >
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </svg>
+)
+
+const CollapseIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="m11 17-5-5 5-5" />
+    <path d="m18 17-5-5 5-5" />
+  </svg>
+)
+
+const ExpandIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="m13 17 5-5-5-5" />
+    <path d="m6 17 5-5-5-5" />
+  </svg>
+)
+
+export interface TableInfo {
+  name: string
+  rowCount: number | null
+  type: "user" | "system"
+}
+
+const formatRowCount = (count: number | null) => {
+  if (count === null) return "—"
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}K`
+  return count.toString()
+}
+
+function SidebarContentWithTables() {
+  const { database, selectedTable, setSelectedTable } = useDatabase()
+  const { isCollapsed, toggle } = useSidebar()
+  const pageContext = usePageContext()
+  const [tables, setTables] = createSignal<TableInfo[]>([])
+  const [tablesLoading, setTablesLoading] = createSignal(false)
+  const [searchQuery, setSearchQuery] = createSignal("")
+
+  const currentPath = () => pageContext.urlPathname
+  const isOnRoot = () => isLinkActive(getRoute("/"), currentPath(), 1)
+  const isOnTablesPage = () => isLinkActive(getRoute("/tables"), currentPath(), 1)
+  const isOnSchemas = () => isLinkActive(getRoute("/schemas"), currentPath(), 1)
+
+  createEffect(() => {
+    const db = database()
+    if (!db) return
+
+    setTablesLoading(true)
+    honoClient.spacetime.tables
+      .$get({ query: { db } })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setTables(() => data.data)
+        }
+      })
+      .finally(() => setTablesLoading(false))
+  })
+
+  const filteredTables = () => {
+    const query = searchQuery().toLowerCase()
+    if (!query) return tables()
+    return tables().filter((t) => t.name.toLowerCase().includes(query))
+  }
+
+  const userTables = () => filteredTables().filter((t) => t.type === "user")
+  const systemTables = () => filteredTables().filter((t) => t.type === "system")
 
   return (
-    <div class="flex h-screen overflow-hidden bg-background text-foreground">
-      {/* Sidebar */}
-      <Sidebar collapsed={collapsed()}>
-        <SidebarHeader>
-          <div class="flex items-center gap-3">
-            <div class="flex size-6 items-center justify-center bg-foreground/90">
-              <DatabaseIcon class="size-4 text-background" />
+    <>
+      <SidebarHeader>
+        <SpacetimeLogoIcon class="size-6 shrink-0" />
+        <Show when={!isCollapsed()}>
+          <span class="font-mono font-semibold text-sm">SpacetimeDB</span>
+        </Show>
+        <Tippy
+          content={isCollapsed() ? "Expand" : "Collapse"}
+          props={{ placement: isCollapsed() ? "right" : "bottom" }}
+        >
+          <Button variant="ghost" size="icon" class={cn("size-6 p-0", !isCollapsed() && "ml-auto")} onClick={() => toggle()}>
+            <Show when={isCollapsed()} fallback={<CollapseIcon />}>
+              <ExpandIcon />
+            </Show>
+          </Button>
+        </Tippy>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup label="Workspace">
+          <SidebarTooltipItem href="/" icon={SqlIcon} label="SQL Editor" active={isOnRoot()} />
+          <SidebarTooltipItem
+            href="/tables"
+            icon={TableIcon}
+            label="Tables"
+            active={isOnTablesPage()}
+          />
+          <SidebarTooltipItem
+            href="/schemas"
+            icon={FileJsonIcon}
+            label="Schemas"
+            active={isOnSchemas()}
+          />
+        </SidebarGroup>
+
+        <SidebarGroup label="Resources">
+          <SidebarTooltipItem
+            icon={DocumentationIcon}
+            label="Documentation"
+            href="https://spacetimedb.com/docs/"
+            target="_blank"
+            external
+          />
+        </SidebarGroup>
+
+        <Show when={isOnTablesPage() && !isCollapsed()}>
+          <div class="mt-2 border-border border-t px-4 py-2">
+            <div class="mb-2 font-medium text-[10px] text-muted-foreground uppercase tracking-wider">
+              Tables
             </div>
-            <Show when={!collapsed()}>
-              <span class="font-mono font-semibold text-sm">SpacetimeDB</span>
+            <div class="relative mb-2">
+              <SearchIcon class="absolute top-1/2 left-2.5 size-3 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search tables..."
+                value={searchQuery()}
+                onInput={(e) => setSearchQuery(e.currentTarget.value)}
+                class="w-full border border-border bg-muted/30 px-7 py-1.5 text-xs outline-none focus:border-primary focus:ring-0"
+              />
+            </div>
+
+            <Show when={tablesLoading()}>
+              <div class="py-4 text-center text-muted-foreground text-xs">Loading tables...</div>
+            </Show>
+
+            <Show when={!tablesLoading() && userTables().length > 0}>
+              <div class="mb-1 text-[9px] text-muted-foreground/70 uppercase tracking-wider">
+                User Tables
+              </div>
+              <div class="mb-2 space-y-0.5">
+                <For each={userTables()}>
+                  {(table) => (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTable(table.name)}
+                      class={cn(
+                        "flex w-full items-center justify-between px-2 py-1.5 text-left text-xs transition-colors",
+                        selectedTable() === table.name
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
+                      )}
+                    >
+                      <TableIcon class="mr-2 size-3 shrink-0" />
+                      <span class="flex-1 truncate">{table.name}</span>
+                      <span class="ml-2 shrink-0 font-mono text-[10px] text-muted-foreground">
+                        {formatRowCount(table.rowCount)}
+                      </span>
+                    </button>
+                  )}
+                </For>
+              </div>
+            </Show>
+
+            <Show when={!tablesLoading() && systemTables().length > 0}>
+              <div class="mb-1 text-[9px] text-muted-foreground/70 uppercase tracking-wider">
+                System Tables
+              </div>
+              <div class="space-y-0.5">
+                <For each={systemTables()}>
+                  {(table) => (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTable(table.name)}
+                      class={cn(
+                        "flex w-full items-center justify-between px-2 py-1.5 text-left text-xs transition-colors",
+                        selectedTable() === table.name
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
+                      )}
+                    >
+                      <TableIcon class="mr-2 size-3 shrink-0" />
+                      <span class="flex-1 truncate">{table.name}</span>
+                      <span class="ml-2 shrink-0 font-mono text-[10px] text-muted-foreground">
+                        {formatRowCount(table.rowCount)}
+                      </span>
+                    </button>
+                  )}
+                </For>
+              </div>
             </Show>
           </div>
-          <Show when={!collapsed()}>
-            <Button
-              variant="ghost"
-              size="icon"
-              class="ml-auto size-6 p-0"
-              onClick={() => setCollapsed(!collapsed())}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="m11 17-5-5 5-5" />
-                <path d="m18 17-5-5 5-5" />
-              </svg>
-            </Button>
-          </Show>
-        </SidebarHeader>
+        </Show>
+      </SidebarContent>
 
-        <SidebarContent>
-          <SidebarGroup label="Workspace">
-            <SidebarItem icon={SqlIcon} active>
-              SQL Editor
-            </SidebarItem>
-            <SidebarItem icon={TableIcon}>Tables</SidebarItem>
-            <SidebarItem icon={FileJsonIcon}>Schemas</SidebarItem>
-          </SidebarGroup>
+      <SidebarFooter>
+        <Tippy
+          content={
+            <span class="flex items-center gap-2">
+              Settings{" "}
+              <kbd class="inline-flex items-center gap-0.5 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] leading-none">
+                <span>⌘</span><span>K</span>
+              </kbd>
+            </span>
+          }
+          props={{ placement: isCollapsed() ? "right" : "bottom" }}
+        >
+          <button
+            type="button"
+            class={cn(
+              "flex w-full items-center text-left text-muted-foreground text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+              isCollapsed() ? "justify-center px-2 py-2" : "gap-3 px-4 py-2"
+            )}
+            onClick={openSettingsPalette}
+          >
+            <SettingsIcon class="size-4 shrink-0" />
+            <Show when={!isCollapsed()}>
+              <span class="truncate">Settings</span>
+            </Show>
+          </button>
+        </Tippy>
+      </SidebarFooter>
+    </>
+  )
+}
 
-          <SidebarGroup label="Resources">
-            <SidebarItem icon={DocumentationIcon}>Documentation</SidebarItem>
-          </SidebarGroup>
-        </SidebarContent>
+function DatabaseInitializer(props: { children: unknown }) {
+  const { database, setDatabase, loading } = useDatabase()
 
-        <SidebarFooter>
-          <SidebarItem icon={SettingsIcon}>Settings</SidebarItem>
-        </SidebarFooter>
-      </Sidebar>
+  createEffect(() => {
+    if (!loading() && database()) {
+      return
+    }
 
-      {/* Main Content */}
-      <div class="flex min-w-0 flex-1 flex-col">{props.children}</div>
-    </div>
+    const urlDb = new URLSearchParams(window.location.search).get("db")
+    if (urlDb) {
+      setDatabase(urlDb)
+      return
+    }
+
+    if (!database()) {
+      honoClient.spacetime.config
+        .$get()
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.database) {
+            setDatabase(data.database)
+          }
+        })
+    }
+  })
+
+  return <>{props.children}</>
+}
+
+export default function RootLayout(props: FlowProps) {
+  return (
+    <>
+      <script innerHTML={themeInitScript} />
+      <ThemeProvider>
+        <VimModeProvider>
+          <DatabaseProvider>
+            <SidebarProvider>
+              <DatabaseInitializer>
+                <div class="flex h-screen overflow-hidden bg-background text-foreground">
+                  <Sidebar>
+                    <SidebarContentWithTables />
+                  </Sidebar>
+
+                  <div class="flex min-w-0 flex-1 flex-col">{props.children}</div>
+                </div>
+                <SettingsCommandPalette />
+              </DatabaseInitializer>
+            </SidebarProvider>
+          </DatabaseProvider>
+        </VimModeProvider>
+      </ThemeProvider>
+    </>
   )
 }

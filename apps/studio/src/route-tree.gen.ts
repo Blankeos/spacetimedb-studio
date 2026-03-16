@@ -12,7 +12,9 @@ export { pageRoutes, getRoute, useParams };
 export type { PageRoute, UseParamsResult };
 
 const pageRoutes = [
-  "/"
+  "/",
+  "/schemas",
+  "/tables"
 ] as const;
 
 type PageRoute = typeof pageRoutes[number];

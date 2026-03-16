@@ -1,0 +1,275 @@
+.flow-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--flow-bg, #f8fafc);
+  cursor: grab;
+}
+
+:root.dark .flow-container {
+  --flow-bg: #1a1a2e;
+}
+
+.flow-container:active {
+  cursor: grabbing;
+}
+
+.flow-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10000px;
+  height: 10000px;
+  transform-origin: 0 0;
+  background-image: radial-gradient(circle, var(--flow-grid-dot, #cbd5e1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+:root.dark .flow-background {
+  --flow-grid-dot: #333;
+}
+
+.edges-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.edge-group {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.edge-path {
+  stroke: var(--flow-edge-color, #94a3b8);
+  stroke-width: 2;
+  fill: none;
+  transition:
+    stroke 0.2s,
+    stroke-width 0.2s;
+}
+
+:root.dark .edge-path {
+  --flow-edge-color: #666;
+}
+
+.edge-path:hover,
+.edge-path.selected {
+  stroke: var(--flow-edge-selected, #f97316);
+  stroke-width: 3;
+}
+
+:root.dark .edge-path:hover,
+:root.dark .edge-path.selected {
+  --flow-edge-selected: #e38b29;
+}
+
+.edge-delete-circle {
+  fill: var(--flow-delete-bg, #dc2626);
+  cursor: pointer;
+}
+
+:root.dark .edge-delete-circle {
+  --flow-delete-bg: #a11111;
+}
+
+.edge-delete-x {
+  fill: white;
+  font-size: 14px;
+  font-weight: bold;
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.nodes-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.flow-node {
+  position: absolute;
+  pointer-events: all;
+  cursor: pointer;
+  min-width: 160px;
+  max-width: 320px;
+  background: var(--flow-node-bg, #ffffff);
+  border: 1px solid var(--flow-node-border, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  font-family: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Mono", monospace;
+}
+
+:root.dark .flow-node {
+  --flow-node-bg: #16213e;
+  --flow-node-border: #0f3460;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.flow-node:hover {
+  border-color: var(--flow-node-hover-border, #f97316);
+  box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.15);
+}
+
+:root.dark .flow-node:hover {
+  --flow-node-hover-border: #e38b29;
+  box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.4);
+}
+
+.flow-node.selected {
+  border-color: var(--flow-node-selected-border, #f97316);
+  box-shadow: 0 0 0 2px var(--flow-node-selected-glow, rgba(249, 115, 22, 0.2));
+}
+
+:root.dark .flow-node.selected {
+  --flow-node-selected-border: #e38b29;
+  --flow-node-selected-glow: rgba(227, 139, 41, 0.3);
+}
+
+.flow-node.reducer {
+  border-color: var(--flow-reducer-border, #3b82f6);
+}
+
+.flow-node.reducer:hover,
+.flow-node.reducer.selected {
+  border-color: var(--flow-reducer-selected, #60a5fa);
+}
+
+:root.dark .flow-node.reducer {
+  --flow-reducer-border: #4a9eff;
+}
+
+:root.dark .flow-node.reducer:hover,
+:root.dark .flow-node.reducer.selected {
+  --flow-reducer-selected: #6bb3ff;
+}
+
+.node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--flow-node-border, #e2e8f0);
+  background: var(--flow-node-header-bg, #f8fafc);
+  border-radius: 7px 7px 0 0;
+}
+
+:root.dark .node-header {
+  --flow-node-header-bg: #1a1a2e;
+  --flow-node-border: #0f3460;
+}
+
+.node-type-icon {
+  font-size: 14px;
+}
+
+.node-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--flow-node-title, #1e293b);
+}
+
+:root.dark .node-title {
+  --flow-node-title: #fff;
+}
+
+.node-columns,
+.node-params {
+  padding: 8px 0;
+}
+
+.node-column,
+.node-param {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.column-name,
+.param-name {
+  color: var(--flow-column-name, #0369a1);
+  flex: 1;
+}
+
+:root.dark .column-name,
+:root.dark .param-name {
+  --flow-column-name: #a8dadc;
+}
+
+.column-type,
+.param-type {
+  color: var(--flow-column-type, #475569);
+  font-size: 11px;
+}
+
+:root.dark .column-type,
+:root.dark .param-type {
+  --flow-column-type: #98c1d9;
+}
+
+.column-primary {
+  background: var(--flow-primary-bg, #f97316);
+  color: var(--flow-primary-text, #fff);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+:root.dark .column-primary {
+  --flow-primary-bg: #e38b29;
+  --flow-primary-text: #000;
+}
+
+.node-param {
+  gap: 12px;
+}
+
+.param-type {
+  font-family: ui-monospace, monospace;
+}
+
+.flow-node.reducer .node-header {
+  border-bottom-color: var(--flow-reducer-border, #3b82f6);
+}
+
+:root.dark .flow-node.reducer .node-header {
+  --flow-reducer-border: #4a9eff;
+}
+
+.flow-node.reducer .node-params {
+  padding: 6px 0;
+}
+
+.flow-node.reducer .node-param {
+  font-size: 11px;
+  padding: 3px 12px;
+}
+
+.flow-node.reducer .param-name {
+  color: var(--flow-param-name, #ca8a04);
+}
+
+:root.dark .flow-node.reducer .param-name {
+  --flow-param-name: #ffd166;
+}
+
+.flow-node.reducer .param-type {
+  color: var(--flow-param-type, #0369a1);
+}
+
+:root.dark .flow-node.reducer .param-type {
+  --flow-param-type: #a8dadc;
+}

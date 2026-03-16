@@ -2,7 +2,11 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { privateEnv } from "@/env.private"
 import { ApiError } from "@/server/lib/error"
-import { describeDatabase, executeMultipleStatements, getTablesWithCounts } from "./spacetime.service"
+import {
+  describeDatabase,
+  executeMultipleStatements,
+  getTablesWithCounts,
+} from "./spacetime.service"
 
 const sqlRequestSchema = z.object({
   sql: z.string().min(1),
@@ -72,6 +76,37 @@ export const spacetimeController = new Hono()
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to get tables"
+      throw ApiError.BadRequest(message)
+    }
+  })
+  .get("/query", async (c) => {
+    const db = c.req.query("db")
+    const table = c.req.query("table")
+    const limit = c.req.query("limit")
+    const where = c.req.query("where")
+
+    if (!db) {
+      throw ApiError.BadRequest("Database name is required")
+    }
+    if (!table) {
+      throw ApiError.BadRequest("Table name is required")
+    }
+
+    const limitNum = limit ? parseInt(limit, 10) : 100
+    const whereClause = where ? ` WHERE ${where}` : ""
+
+    try {
+      const result = await executeMultipleStatements(
+        db,
+        `SELECT * FROM ${table}${whereClause} LIMIT ${limitNum};`
+      )
+      return c.json({
+        success: true,
+        data: result[0]?.data ?? null,
+        error: result[0]?.error,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to query table"
       throw ApiError.BadRequest(message)
     }
   })
