@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/sidebar"
 import { DatabaseProvider, useDatabase } from "@/contexts/database"
 import { SidebarProvider, useSidebar } from "@/contexts/sidebar"
-import { ThemeProvider, themeInitScript } from "@/contexts/theme"
+import { ThemeProvider, themeInitScript, useThemeContext } from "@/contexts/theme"
 import { VimModeProvider } from "@/contexts/vim-mode"
 import {
   SpacetimeLogoIcon,
@@ -148,8 +148,8 @@ function SidebarContentWithTables() {
   return (
     <>
       <SidebarHeader>
-        <SpacetimeLogoIcon class="size-6 shrink-0" />
         <Show when={!isCollapsed()}>
+          <SpacetimeLogoIcon class="size-5 shrink-0 text-foreground" />
           <span class="font-mono font-semibold text-sm">SpacetimeDB</span>
         </Show>
         <Tippy
