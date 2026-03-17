@@ -13,11 +13,6 @@ import { honoClient } from "@/lib/hono-client"
 import { Tippy } from "@/lib/solid-tippy/tippy"
 import getTitle from "@/utils/get-title"
 
-useMetadata.setGlobalDefaults({
-  title: getTitle("Tables"),
-  description: "SpacetimeDB Studio - View and browse tables",
-})
-
 interface QueryResult {
   rows: Record<string, unknown>[]
   columns: string[]
@@ -71,6 +66,11 @@ function serializeRow(row: Record<string, unknown>): string {
 }
 
 export default function TablesPage() {
+  useMetadata({
+    title: getTitle("Tables"),
+    description: "SpacetimeDB Studio - View and browse tables",
+  })
+
   const { database, setDatabase, selectedTable, loading } = useDatabase()
   const spacetime = useSpacetime()
   const tableSchemas = useTableSchemas(() => database() ?? undefined)

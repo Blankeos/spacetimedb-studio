@@ -1,4 +1,4 @@
-# 🐇 Solid Hop
+# SpacetimeDB Studio
 
 💙 A **minimal** and **unopinionated** Vike + Solid + Hono starter.
 

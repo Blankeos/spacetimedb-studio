@@ -11,11 +11,6 @@ import type { SpacetimeDescribe } from "@/lib/schema-formatter"
 import { createFlow, type EdgeBase, type NodeBase } from "@/lib/solid-flow"
 import getTitle from "@/utils/get-title"
 
-useMetadata.setGlobalDefaults({
-  title: getTitle("Schemas"),
-  description: "SpacetimeDB Studio - View database schema definitions",
-})
-
 interface SchemaNode extends NodeBase {
   type: "table"
   data: {
@@ -224,6 +219,11 @@ function getTypeNameSimple(
 }
 
 export default function SchemasPage() {
+  useMetadata({
+    title: getTitle("Schemas"),
+    description: "SpacetimeDB Studio - View database schema definitions",
+  })
+
   const { database, setDatabase, loading } = useDatabase()
   const [schema, setSchema] = createSignal<SpacetimeDescribe | null>(null)
   const [error, setError] = createSignal<string | null>(null)
