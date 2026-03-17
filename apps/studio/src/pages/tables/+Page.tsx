@@ -302,7 +302,7 @@ export default function TablesPage() {
     }
   }
 
-  const handleDeleteRow = async (row: Record<string, unknown>) => {
+  const handleDeleteRow = async (rows: Record<string, unknown>[]) => {
     const table = selectedTable()
     const pkCols = currentPrimaryKeyColumns()
     if (!table || pkCols.length === 0) {
@@ -310,9 +310,12 @@ export default function TablesPage() {
       return
     }
 
-    const whereClause = pkCols
-      .map((col) => `${col} = ${formatSqlValue(row[col])}`)
-      .join(" AND ")
+    const rowConditions = rows.map((row) =>
+      pkCols.length === 1
+        ? `${pkCols[0]} = ${formatSqlValue(row[pkCols[0]])}`
+        : `(${pkCols.map((col) => `${col} = ${formatSqlValue(row[col])}`).join(" AND ")})`
+    )
+    const whereClause = rowConditions.join(" OR ")
 
     const deleteSql = `DELETE FROM ${table} WHERE ${whereClause};`
 
@@ -327,7 +330,7 @@ export default function TablesPage() {
 
     const toastId = toast.loading(
       <div class="flex flex-col gap-1">
-        <span>Deleting row...</span>
+        <span>Deleting {rows.length} row{rows.length !== 1 ? "s" : ""}...</span>
         <button type="button" class="cursor-default text-left text-muted-foreground text-xs">
           {deleteSql.length > 50 ? `${deleteSql.slice(0, 50)}...` : deleteSql}
         </button>
@@ -346,7 +349,7 @@ export default function TablesPage() {
       if (data.results?.[0]?.success) {
         toast.success(
           <div class="flex flex-col gap-1">
-            <span>Row deleted successfully</span>
+            <span>{rows.length} row{rows.length !== 1 ? "s" : ""} deleted successfully</span>
             <Tippy
               content={<code class="whitespace-pre-wrap text-xs">{deleteSql}</code>}
               props={{ placement: "bottom", zIndex: 9999999999 }}

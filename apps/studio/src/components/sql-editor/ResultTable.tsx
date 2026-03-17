@@ -30,7 +30,7 @@ interface ResultTableProps {
   tableName?: string | null
   primaryKeyColumns?: string[]
   onSave?: (edit: CellEdit) => Promise<void>
-  onDeleteRow?: (row: Record<string, unknown>) => Promise<void>
+  onDeleteRow?: (rows: Record<string, unknown>[]) => Promise<void>
 }
 
 function PkValueCell(props: { value: string }) {
@@ -271,6 +271,19 @@ export function ResultTable(props: ResultTableProps) {
     onCleanup(() => window.removeEventListener("keydown", handleKeyDown))
   })
 
+  createEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "c" && (e.metaKey || e.ctrlKey) && !editingCell()) {
+        if (selectedCells().size === 0) return
+        e.preventDefault()
+        handleCopySelection()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    onCleanup(() => window.removeEventListener("keydown", handleKeyDown))
+  })
+
   const handleContextMenu = (e: MouseEvent) => {
     const cell = (e.target as HTMLElement).closest("td")
     if (!cell) return
@@ -307,10 +320,8 @@ export function ResultTable(props: ResultTableProps) {
   const handleDeleteRow = async () => {
     if (!props.onDeleteRow) return
     const indices = getSelectedRowIndices()
-    for (const rowIdx of indices) {
-      const row = props.rows[rowIdx]
-      if (row) await props.onDeleteRow(row)
-    }
+    const rows = [...indices].map((idx) => props.rows[idx]).filter(Boolean) as Record<string, unknown>[]
+    if (rows.length > 0) await props.onDeleteRow(rows)
   }
 
   const handleCopySelection = async () => {

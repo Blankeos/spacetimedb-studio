@@ -220,9 +220,6 @@ function SidebarContentWithTables() {
             </Show>
 
             <Show when={!tablesLoading() && userTables().length > 0}>
-              <div class="mb-1 text-[9px] text-muted-foreground/70 uppercase tracking-wider">
-                User Tables
-              </div>
               <div class="mb-2 space-y-0.5">
                 <For each={userTables()}>
                   {(table) => (

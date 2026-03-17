@@ -8,7 +8,7 @@ interface DataTableProps {
   tableName?: string | null
   primaryKeyColumns?: string[]
   onSave?: (edit: CellEdit) => Promise<void>
-  onDeleteRow?: (row: Record<string, unknown>) => Promise<void>
+  onDeleteRow?: (rows: Record<string, unknown>[]) => Promise<void>
   class?: string
 }
 
