@@ -259,10 +259,5 @@ export function SqlEditor(props: SqlEditorProps) {
     )
   )
 
-  return (
-    <div
-      ref={editorRef}
-      class={`h-full w-full border border-border ${props.class || ""}`}
-    />
-  )
+  return <div ref={editorRef} class={`h-full w-full border border-border ${props.class || ""}`} />
 }

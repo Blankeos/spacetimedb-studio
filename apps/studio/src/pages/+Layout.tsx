@@ -1,7 +1,7 @@
 import { createEffect, createSignal, type FlowProps, For, Show } from "solid-js"
+import { Toaster } from "solid-sonner"
 import { useMetadata } from "vike-metadata-solid"
 import { usePageContext } from "vike-solid/usePageContext"
-import { Toaster } from "solid-sonner"
 import "@/styles/app.css"
 import "@/lib/solid-tippy/tippy.css"
 import { openSettingsPalette, SettingsCommandPalette } from "@/components/settings-command-palette"

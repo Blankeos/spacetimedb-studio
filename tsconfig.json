@@ -1,7 +1,4 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "references": [
-    { "path": "./apps/runtime" },
-    { "path": "./packages/cli" }
-  ]
+  "references": [{ "path": "./apps/runtime" }, { "path": "./packages/cli" }]
 }

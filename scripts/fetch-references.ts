@@ -1,5 +1,5 @@
 import { $ } from "bun"
-import { existsSync, readdirSync, appendFileSync, writeFileSync } from "fs"
+import { appendFileSync, existsSync, readdirSync, writeFileSync } from "fs"
 import { join } from "path"
 
 // ============================================================================ //

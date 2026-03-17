@@ -71,7 +71,9 @@ export default function SqlEditorPage() {
 
         const schemas = new Map<string, TableSchema>()
         for (const table of data.data.tables) {
-          const pkElements = (table.primary_key as Array<{ elements: Array<{ name: string }> }>)?.[0]?.elements
+          const pkElements = (
+            table.primary_key as Array<{ elements: Array<{ name: string }> }>
+          )?.[0]?.elements
           const pkCols = pkElements?.map((e) => e.name) ?? []
           schemas.set(table.name, {
             name: table.name,

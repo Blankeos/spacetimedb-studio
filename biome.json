@@ -14,10 +14,31 @@
     },
     "linter": {
       "enabled": false
+    },
+    "formatter": {
+      "enabled": true
     }
   },
+  "overrides": [
+    {
+      "includes": ["**/*.css"],
+      "css": {
+        "parser": {
+          "tailwindDirectives": true
+        }
+      }
+    }
+  ],
   "files": {
-    "includes": ["**", "!dist/**/*", "!**/*.js", "!**/*.cjs", "!**/*.mjs", "!src/route-tree.gen.ts"]
+    "includes": [
+      "**",
+      "!**/dist/**/*",
+      "!**/_tmp_*",
+      "!**/*.js",
+      "!**/*.cjs",
+      "!**/*.mjs",
+      "!**/src/route-tree.gen.ts"
+    ]
   },
   "linter": {
     "enabled": true,
@@ -33,7 +54,9 @@
         "noNonNullAssertion": "off"
       },
       "a11y": {
-        "noSvgWithoutTitle": "off"
+        "noSvgWithoutTitle": "off",
+        "useSemanticElements": "off",
+        "useFocusableInteractive": "off"
       },
       "correctness": {
         "noUnusedVariables": "warn"

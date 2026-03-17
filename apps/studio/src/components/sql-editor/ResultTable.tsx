@@ -270,13 +270,18 @@ export function ResultTable(props: ResultTableProps) {
                       {pkCols.map((col) => (
                         <>
                           <span class="text-muted-foreground/70">{col}=</span>
-                          <span class="text-foreground">{String(props.rows[editing().row]?.[col] ?? "NULL")}</span>
+                          <span class="text-foreground">
+                            {String(props.rows[editing().row]?.[col] ?? "NULL")}
+                          </span>
                         </>
                       ))}
                     </span>
                   </Show>
                   <Show when={!hasPk}>
-                    <Tippy content="Can't make an SQL query to target this cell" props={{ placement: "bottom" }}>
+                    <Tippy
+                      content="Can't make an SQL query to target this cell"
+                      props={{ placement: "bottom" }}
+                    >
                       <span class="italic">No primary key</span>
                     </Tippy>
                   </Show>
