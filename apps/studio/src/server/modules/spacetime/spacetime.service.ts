@@ -109,7 +109,9 @@ function parseTableOutput(output: string): { rows: Record<string, unknown>[]; co
     return { rows: [], columns: [] }
   }
 
-  const separatorIndex = lines.findIndex((line) => line.includes("---"))
+  const separatorIndex = lines.findIndex(
+    (line) => /^[+-]+$/.test(line.trim()) || /^\|?[ -]+\|/.test(line)
+  )
 
   if (separatorIndex === -1 || separatorIndex === 0) {
     return { rows: [], columns: [] }
@@ -119,15 +121,26 @@ function parseTableOutput(output: string): { rows: Record<string, unknown>[]; co
   if (!headerLine) {
     return { rows: [], columns: [] }
   }
-  const columns = headerLine.split(/\s+/).filter((col) => col.length > 0)
+
+  const parseRow = (line: string): string[] => {
+    if (line.includes("|")) {
+      return line
+        .split("|")
+        .map((cell) => cell.trim())
+        .filter((cell) => cell.length > 0)
+    }
+    return line.split(/\s+/).filter((col) => col.length > 0)
+  }
+
+  const columns = parseRow(headerLine)
 
   const rows: Record<string, unknown>[] = []
 
   for (let i = separatorIndex + 1; i < lines.length; i++) {
     const line = lines[i]
-    if (!line || line.includes("---")) continue
+    if (!line || /^[ -]+$/.test(line.trim())) continue
 
-    const values = line.split(/\s+/).filter((val) => val.length > 0)
+    const values = parseRow(line)
 
     const row: Record<string, unknown> = {}
     columns.forEach((col, idx) => {
