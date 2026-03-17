@@ -18,7 +18,7 @@
     "lint:fix": "biome check --write .",
     "changeset": "changeset",
     "readme:sync": "cp README.md packages/cli/README.md",
-    "publish-ci": "bun run readme:sync && bun run build && changeset publish"
+    "publish-ci": "bun run readme:sync && bun run build && bun run --filter './packages/cli' build && changeset publish"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.6",
