@@ -50,8 +50,8 @@ export function DatabaseProvider(props: { children: JSX.Element }) {
     const stored = getFromSessionStorage("spacetime-db")
     if (stored) {
       setDatabaseInternal(stored)
-      setLoading(false)
     }
+    setLoading(false)
   })
 
   return (
