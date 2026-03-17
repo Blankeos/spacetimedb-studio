@@ -1,5 +1,6 @@
 import { useClipboard } from "bagon-hooks"
 import { type Component, For, Show } from "solid-js"
+import { toast } from "solid-sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -53,6 +54,7 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
   const hasMultipleResults = () => props.results && props.results.length > 1
 
   const clipboard = useClipboard()
+  const sqlClipboard = useClipboard()
 
   const copyAsCsv = (result: StatementResult) => {
     const data = result.data
@@ -77,6 +79,11 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
     )
     const csv = [header, ...csvRows].join("\n")
     clipboard.copy(csv)
+  }
+
+  const copyStatement = (statement: string) => {
+    sqlClipboard.copy(statement)
+    toast.success("SQL copied to clipboard")
   }
 
   const renderResultTable = (result: StatementResult) => (
@@ -187,7 +194,13 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
                   {(result) => (
                     <div class="flex h-full flex-col">
                       <div class="flex shrink-0 items-center justify-between border-border border-b bg-muted/20 px-3 py-1.5">
-                        <span class="max-w-[50%] truncate font-mono text-muted-foreground text-xs">
+                        <span
+                          class="max-w-[50%] cursor-pointer truncate font-mono text-muted-foreground text-xs hover:text-foreground"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => copyStatement(result().statement)}
+                          onKeyUp={(e) => e.key === "Enter" && copyStatement(result().statement)}
+                        >
                           {getStatementLabel(result().statement)}
                         </span>
                         <div class="flex items-center gap-2">
@@ -241,7 +254,7 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
                   <TabsContent value={String(index())} class="flex-1 overflow-auto">
                     <div class="flex h-full flex-col">
                       <div class="flex shrink-0 items-center justify-between border-border border-b bg-muted/20 px-3 py-1.5">
-                        <div class="flex items-center gap-2">
+                        <div class="flex min-w-0 flex-1 items-center gap-2">
                           <Show
                             when={result.success}
                             fallback={
@@ -254,7 +267,13 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
                               Success
                             </span>
                           </Show>
-                          <span class="max-w-[300px] truncate font-mono text-muted-foreground text-xs">
+                          <span
+                            class="max-w-[300px] cursor-pointer truncate font-mono text-muted-foreground text-xs hover:text-foreground"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => copyStatement(result.statement)}
+                            onKeyUp={(e) => e.key === "Enter" && copyStatement(result.statement)}
+                          >
                             {getStatementLabel(result.statement)}
                           </span>
                         </div>
