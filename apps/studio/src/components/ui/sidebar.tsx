@@ -106,15 +106,13 @@ export const SidebarGroup: Component<SidebarGroupProps> = (props) => {
   return (
     <div class={cn("py-1", local.class)} {...others}>
       {local.label && (
-        <Tippy
-          content={local.label}
-          disabled={!isCollapsed()}
-          props={{ placement: "right" }}
-        >
-          <div class={cn(
-            "px-4 py-1.5 font-medium text-[10px] text-muted-foreground uppercase tracking-wider",
-            isCollapsed() && "text-center"
-          )}>
+        <Tippy content={local.label} disabled={!isCollapsed()} props={{ placement: "right" }}>
+          <div
+            class={cn(
+              "px-4 py-1.5 font-medium text-[10px] text-muted-foreground uppercase tracking-wider",
+              isCollapsed() && "text-center"
+            )}
+          >
             {isCollapsed() ? local.label[0] : local.label}
           </div>
         </Tippy>
@@ -180,19 +178,18 @@ export const SidebarTooltipItem: Component<SidebarTooltipItemProps> = (props) =>
   const { isCollapsed } = useSidebar()
 
   const tooltipLabel = () =>
-    local.tooltipContent ?? (local.external ? (
+    local.tooltipContent ??
+    (local.external ? (
       <span class="flex items-center gap-1.5">
         {local.label}
         <ArrowUpRightIcon class="size-3" />
       </span>
-    ) : local.label)
+    ) : (
+      local.label
+    ))
 
   return (
-    <Tippy
-      content={tooltipLabel()}
-      disabled={!isCollapsed()}
-      props={{ placement: "right" }}
-    >
+    <Tippy content={tooltipLabel()} disabled={!isCollapsed()} props={{ placement: "right" }}>
       <a
         href={local.href}
         target={local.target}
@@ -210,7 +207,7 @@ export const SidebarTooltipItem: Component<SidebarTooltipItemProps> = (props) =>
         <local.icon class="size-4 shrink-0" />
         {!isCollapsed() && (
           <>
-            <span class="truncate flex-1">{local.label}</span>
+            <span class="flex-1 truncate">{local.label}</span>
             {local.external && <ArrowUpRightIcon class="size-3 shrink-0 text-muted-foreground" />}
           </>
         )}

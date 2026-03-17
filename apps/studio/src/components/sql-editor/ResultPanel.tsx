@@ -3,7 +3,7 @@ import { type Component, For, Show } from "solid-js"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/utils/cn"
+import { ResultTable } from "./ResultTable"
 
 const CheckIcon = (props: { class?: string }) => (
   <svg
@@ -108,46 +108,7 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
         </div>
       }
     >
-      <div class="overflow-auto">
-        <table class="w-full text-sm">
-          <thead class="sticky top-0 z-10 bg-card">
-            <tr class="border-border border-b">
-              <For each={result.data?.columns}>
-                {(column) => (
-                  <th class="whitespace-nowrap border-border border-r bg-muted/30 px-4 py-2 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider last:border-r-0">
-                    {column}
-                  </th>
-                )}
-              </For>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={result.data?.rows}>
-              {(row, index) => (
-                <tr
-                  class={cn(
-                    "border-border/50 border-b transition-colors hover:bg-accent/30",
-                    index() % 2 === 0 ? "bg-transparent" : "bg-muted/10"
-                  )}
-                >
-                  <For each={result.data?.columns}>
-                    {(column) => (
-                      <td class="max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap border-border/30 border-r px-4 py-2 font-mono text-foreground/90 text-xs last:border-r-0">
-                        <CellValue value={row[column]} />
-                      </td>
-                    )}
-                  </For>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
-        <Show when={result.data && result.data.numRows === 0}>
-          <div class="flex items-center justify-center py-12 text-muted-foreground">
-            <span class="text-sm">No rows returned</span>
-          </div>
-        </Show>
-      </div>
+      <ResultTable columns={result.data!.columns} rows={result.data!.rows} />
     </Show>
   )
 
@@ -320,31 +281,4 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
       </CardContent>
     </Card>
   )
-}
-
-function CellValue(props: { value: unknown }) {
-  const value = props.value
-
-  if (value === null || value === undefined) {
-    return <span class="text-muted-foreground italic">NULL</span>
-  }
-
-  if (typeof value === "boolean") {
-    return (
-      <span class={value ? "text-emerald-400" : "text-red-400"}>{value ? "true" : "false"}</span>
-    )
-  }
-
-  if (typeof value === "number") {
-    return <span class="text-sky-400">{value}</span>
-  }
-
-  if (typeof value === "string") {
-    if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
-      return <span class="text-amber-400/80">{value}</span>
-    }
-    return <span class="text-emerald-400/80">"{value}"</span>
-  }
-
-  return <span>{String(value)}</span>
 }

@@ -36,6 +36,7 @@
     "cmdk-solid": "^1.1.2",
     "codemirror": "^6.0.1",
     "hono": "^4.12.7",
+    "smol-toml": "^1.6.0",
     "solid-js": "1.9.11",
     "solid-resizable-panels": "^0.5.4",
     "solid-sonner": "^0.2.8",

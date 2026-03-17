@@ -7,6 +7,7 @@ import {
   executeMultipleStatements,
   getTablesWithCounts,
 } from "./spacetime.service"
+import { getSpacetimeConnectionConfig } from "./spacetime-config.service"
 
 const sqlRequestSchema = z.object({
   sql: z.string().min(1),
@@ -18,6 +19,44 @@ export const spacetimeController = new Hono()
     return c.json({
       database: privateEnv.SPACETIME_DB || null,
     })
+  })
+  .get("/connection/:database", async (c) => {
+    const database = c.req.param("database")
+
+    if (!database) {
+      throw ApiError.BadRequest("Database name is required")
+    }
+
+    try {
+      const config = await getSpacetimeConnectionConfig(database)
+      return c.json({
+        success: true,
+        data: config,
+        error: null,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to get connection config"
+      throw ApiError.BadRequest(message)
+    }
+  })
+  .get("/schema/:database", async (c) => {
+    const database = c.req.param("database")
+
+    if (!database) {
+      throw ApiError.BadRequest("Database name is required")
+    }
+
+    try {
+      const schema = await describeDatabase(database)
+      return c.json({
+        success: true,
+        data: schema,
+        error: null,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to get schema"
+      throw ApiError.BadRequest(message)
+    }
   })
   .post("/sql", async (c) => {
     const body = await c.req.json()

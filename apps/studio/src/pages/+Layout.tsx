@@ -15,13 +15,14 @@ import {
 } from "@/components/ui/sidebar"
 import { DatabaseProvider, useDatabase } from "@/contexts/database"
 import { SidebarProvider, useSidebar } from "@/contexts/sidebar"
+import { SpacetimeProvider } from "@/contexts/spacetime"
 import { ThemeProvider, themeInitScript } from "@/contexts/theme"
 import { VimModeProvider } from "@/contexts/vim-mode"
 import {
-  SpacetimeLogoIcon,
   DocumentationIcon,
   FileJsonIcon,
   SettingsIcon,
+  SpacetimeLogoIcon,
   SqlIcon,
   TableIcon,
 } from "@/icons/sidebar-icons"
@@ -157,7 +158,12 @@ function SidebarContentWithTables() {
           content={isCollapsed() ? "Expand" : "Collapse"}
           props={{ placement: isCollapsed() ? "right" : "bottom" }}
         >
-          <Button variant="ghost" size="icon" class={cn("size-6 p-0", !isCollapsed() && "ml-auto")} onClick={() => toggle()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            class={cn("size-6 p-0", !isCollapsed() && "ml-auto")}
+            onClick={() => toggle()}
+          >
             <Show when={isCollapsed()} fallback={<CollapseIcon />}>
               <ExpandIcon />
             </Show>
@@ -277,7 +283,8 @@ function SidebarContentWithTables() {
             <span class="flex items-center gap-2">
               Settings{" "}
               <kbd class="inline-flex items-center gap-0.5 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] leading-none">
-                <span>⌘</span><span>K</span>
+                <span>⌘</span>
+                <span>K</span>
               </kbd>
             </span>
           }
@@ -338,18 +345,20 @@ export default function RootLayout(props: FlowProps) {
       <ThemeProvider>
         <VimModeProvider>
           <DatabaseProvider>
-            <SidebarProvider>
-              <DatabaseInitializer>
-                <div class="flex h-screen overflow-hidden bg-background text-foreground">
-                  <Sidebar>
-                    <SidebarContentWithTables />
-                  </Sidebar>
+            <SpacetimeProvider>
+              <SidebarProvider>
+                <DatabaseInitializer>
+                  <div class="flex h-screen overflow-hidden bg-background text-foreground">
+                    <Sidebar>
+                      <SidebarContentWithTables />
+                    </Sidebar>
 
-                  <div class="flex min-w-0 flex-1 flex-col">{props.children}</div>
-                </div>
-                <SettingsCommandPalette />
-              </DatabaseInitializer>
-            </SidebarProvider>
+                    <div class="flex min-w-0 flex-1 flex-col">{props.children}</div>
+                  </div>
+                  <SettingsCommandPalette />
+                </DatabaseInitializer>
+              </SidebarProvider>
+            </SpacetimeProvider>
           </DatabaseProvider>
         </VimModeProvider>
       </ThemeProvider>

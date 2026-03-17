@@ -55,7 +55,9 @@ export function DatabaseProvider(props: { children: JSX.Element }) {
   })
 
   return (
-    <DatabaseContext.Provider value={{ database, setDatabase, loading, selectedTable, setSelectedTable }}>
+    <DatabaseContext.Provider
+      value={{ database, setDatabase, loading, selectedTable, setSelectedTable }}
+    >
       {props.children}
     </DatabaseContext.Provider>
   )

@@ -263,14 +263,14 @@ export default function SchemasPage() {
             <span>{tableCount()} tables</span>
             <span>{reducers().length} reducers</span>
           </div>
-          <Tabs
-            value={view()}
-            onChange={(v) => setView(v as "graph" | "json")}
-            class="mr-2"
-          >
+          <Tabs value={view()} onChange={(v) => setView(v as "graph" | "json")} class="mr-2">
             <TabsList class="h-7">
-              <TabsTrigger value="graph" class="px-3 py-1 text-xs">Graph</TabsTrigger>
-              <TabsTrigger value="json" class="px-3 py-1 text-xs">JSON</TabsTrigger>
+              <TabsTrigger value="graph" class="px-3 py-1 text-xs">
+                Graph
+              </TabsTrigger>
+              <TabsTrigger value="json" class="px-3 py-1 text-xs">
+                JSON
+              </TabsTrigger>
             </TabsList>
           </Tabs>
           <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing()}>
@@ -284,7 +284,7 @@ export default function SchemasPage() {
         </Show>
       </PageHeader>
 
-      <main class="flex flex-1 min-h-0 overflow-hidden">
+      <main class="flex min-h-0 flex-1 overflow-hidden">
         <Show when={error()}>
           <div class="m-4 rounded-md border border-red-500/50 bg-red-500/10 p-4">
             <p class="text-red-400 text-sm">{error()}</p>
@@ -321,20 +321,20 @@ export default function SchemasPage() {
         </Show>
 
         <Show when={schema()}>
-          <div class="flex flex-1 min-w-0 overflow-hidden">
+          <div class="flex min-w-0 flex-1 overflow-hidden">
             <Show when={view() === "graph"}>
-              <div class="flex-1 min-w-0">
+              <div class="min-w-0 flex-1">
                 <SchemaFlow nodes={graphData().nodes} edges={graphData().edges} fitView={true} />
               </div>
 
-              <div class="w-72 shrink-0 border-l border-border bg-card overflow-y-auto">
-                <div class="p-3 border-b border-border">
+              <div class="w-72 shrink-0 overflow-y-auto border-border border-l bg-card">
+                <div class="border-border border-b p-3">
                   <h3 class="font-semibold text-sm">Reducers</h3>
-                  <p class="text-muted-foreground text-xs mt-0.5">{reducers().length} total</p>
+                  <p class="mt-0.5 text-muted-foreground text-xs">{reducers().length} total</p>
                 </div>
 
                 <Show when={userReducers().length > 0}>
-                  <div class="p-3 border-b border-border">
+                  <div class="border-border border-b p-3">
                     <div class="mb-2 text-[10px] text-muted-foreground uppercase tracking-wider">
                       User Defined
                     </div>
@@ -346,9 +346,10 @@ export default function SchemasPage() {
                             class="w-full rounded p-2 text-left transition-colors hover:bg-accent"
                             onClick={() => setSelectedReducer(reducer.name)}
                           >
-                            <div class="font-mono text-xs text-foreground">{reducer.name}</div>
-                            <div class="mt-0.5 text-muted-foreground text-[10px]">
-                              {reducer.params.length} parameter{reducer.params.length !== 1 ? "s" : ""}
+                            <div class="font-mono text-foreground text-xs">{reducer.name}</div>
+                            <div class="mt-0.5 text-[10px] text-muted-foreground">
+                              {reducer.params.length} parameter
+                              {reducer.params.length !== 1 ? "s" : ""}
                             </div>
                           </button>
                         )}
@@ -371,13 +372,14 @@ export default function SchemasPage() {
                             onClick={() => setSelectedReducer(reducer.name)}
                           >
                             <div class="flex items-center gap-2">
-                              <span class="font-mono text-xs text-foreground">{reducer.name}</span>
+                              <span class="font-mono text-foreground text-xs">{reducer.name}</span>
                               <span class="rounded bg-blue-500/20 px-1.5 py-0.5 text-[9px] text-blue-400">
                                 {reducer.lifecycle}
                               </span>
                             </div>
-                            <div class="mt-0.5 text-muted-foreground text-[10px]">
-                              {reducer.params.length} parameter{reducer.params.length !== 1 ? "s" : ""}
+                            <div class="mt-0.5 text-[10px] text-muted-foreground">
+                              {reducer.params.length} parameter
+                              {reducer.params.length !== 1 ? "s" : ""}
                             </div>
                           </button>
                         )}
@@ -387,9 +389,9 @@ export default function SchemasPage() {
                 </Show>
 
                 <Show when={selectedReducerData()}>
-                  <div class="border-t border-border bg-accent/50 p-3">
+                  <div class="border-border border-t bg-accent/50 p-3">
                     <div class="mb-2 flex items-center justify-between">
-                      <h4 class="font-mono font-medium text-sm">{selectedReducerData()?.name}</h4>
+                      <h4 class="font-medium font-mono text-sm">{selectedReducerData()?.name}</h4>
                       <button
                         type="button"
                         class="text-muted-foreground hover:text-foreground"
