@@ -97,6 +97,7 @@ body {
 
 @theme {
   --font-mono: "Source Code Pro", "JetBrains Mono", "Fira Code", Consolas, monospace;
+  --font-sans: "Inter";
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);

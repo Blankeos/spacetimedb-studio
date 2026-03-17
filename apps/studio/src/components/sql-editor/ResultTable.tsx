@@ -148,7 +148,11 @@ export function ResultTable(props: ResultTableProps) {
   const handleCellDoubleClick = (e: MouseEvent, rowIndex: number, columnId: string) => {
     const target = e.currentTarget as HTMLTableCellElement
     const currentValue = props.rows[rowIndex]?.[columnId]
-    setEditValue(String(currentValue ?? ""))
+    const displayValue = String(currentValue ?? "")
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\r")
+      .replace(/\\t/g, "\t")
+    setEditValue(displayValue)
     setEditingCell({ row: rowIndex, col: columnId, element: target })
   }
 
@@ -237,6 +241,9 @@ export function ResultTable(props: ResultTableProps) {
         {(editing) => {
           const pkCols = props.primaryKeyColumns ?? []
           const hasPk = pkCols.length > 0
+          const row = props.rows[editing().row]
+          const pkHasNull = pkCols.some((col) => row?.[col] === null || row?.[col] === undefined)
+          const canSave = hasPk && !pkHasNull
           return (
             <div
               class="fixed z-50 min-w-[200px] border border-border bg-popover p-2 shadow-lg"
@@ -255,7 +262,7 @@ export function ResultTable(props: ResultTableProps) {
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
                     setEditingCell(null)
-                  } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  } else if (e.key === "Enter" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault()
                     handleSave()
                   }
@@ -265,18 +272,6 @@ export function ResultTable(props: ResultTableProps) {
               />
               <div class="mt-1.5 flex items-center justify-between">
                 <div class="text-[10px] text-muted-foreground">
-                  <Show when={hasPk && props.tableName}>
-                    <span class="font-mono">
-                      {pkCols.map((col) => (
-                        <>
-                          <span class="text-muted-foreground/70">{col}=</span>
-                          <span class="text-foreground">
-                            {String(props.rows[editing().row]?.[col] ?? "NULL")}
-                          </span>
-                        </>
-                      ))}
-                    </span>
-                  </Show>
                   <Show when={!hasPk}>
                     <Tippy
                       content="Can't make an SQL query to target this cell"
@@ -285,28 +280,79 @@ export function ResultTable(props: ResultTableProps) {
                       <span class="italic">No primary key</span>
                     </Tippy>
                   </Show>
+                  <Show when={hasPk && props.tableName}>
+                    <span class="font-mono">
+                      {pkCols.map((col, idx) => {
+                        const isNull = row?.[col] === null || row?.[col] === undefined
+                        const value = String(row?.[col] ?? "NULL")
+                        return (
+                          <>
+                            {idx > 0 && <span class="text-muted-foreground/70">, </span>}
+                            <span class="text-muted-foreground/70">{col}=</span>
+                            <Show
+                              when={isNull}
+                              fallback={<span class="text-foreground">{value}</span>}
+                            >
+                              <Tippy
+                                content="Primary key is NULL - cannot uniquely identify row"
+                                props={{ placement: "bottom" }}
+                              >
+                                <span class="cursor-default text-red-400">{value}</span>
+                              </Tippy>
+                            </Show>
+                          </>
+                        )
+                      })}
+                    </span>
+                  </Show>
                 </div>
                 <div class="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={isSaving() || !props.onSave || !hasPk}
-                    class={cn(
-                      "px-2 py-1 text-xs",
-                      isSaving() && "cursor-wait opacity-50",
-                      props.onSave && hasPk
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "cursor-not-allowed bg-primary/10 text-primary/50"
-                    )}
+                  <Show
+                    when={!canSave}
+                    fallback={
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={isSaving() || !props.onSave}
+                        class={cn(
+                          "px-2 py-1 text-xs",
+                          isSaving() && "cursor-wait opacity-50",
+                          "bg-primary text-primary-foreground hover:bg-primary/90"
+                        )}
+                      >
+                        {isSaving() ? "Saving..." : "Save"}
+                        <Show when={!isSaving()}>
+                          <span class="ml-1 opacity-60">⌘⇧⏎</span>
+                        </Show>
+                      </button>
+                    }
                   >
-                    {isSaving() ? "Saving..." : "Save"}
-                  </button>
+                    <Tippy
+                      content={
+                        !hasPk
+                          ? "No primary key"
+                          : "Primary key is NULL - cannot uniquely identify row"
+                      }
+                      props={{ placement: "bottom" }}
+                    >
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled
+                        class="cursor-not-allowed bg-primary/10 px-2 py-1 text-primary/50 text-xs"
+                      >
+                        Save
+                        <span class="ml-1 opacity-60">⌘⇧⏎</span>
+                      </button>
+                    </Tippy>
+                  </Show>
                   <button
                     type="button"
                     onClick={() => setEditingCell(null)}
                     class="px-2 py-1 text-muted-foreground text-xs hover:bg-accent"
                   >
                     Cancel
+                    <span class="ml-1 opacity-60">Esc</span>
                   </button>
                 </div>
               </div>

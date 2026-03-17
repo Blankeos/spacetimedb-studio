@@ -1,3 +1,4 @@
+import { useLocalStorageStore } from "bagon-hooks"
 import { createEffect, createMemo, createSignal, Show } from "solid-js"
 import { toast } from "solid-sonner"
 import { useMetadata } from "vike-metadata-solid"
@@ -37,7 +38,12 @@ function extractTableNameFromQuery(sql: string): string | null {
 function formatSqlValue(value: unknown): string {
   if (value === null || value === undefined) return "NULL"
   if (typeof value === "string") {
-    const escaped = value.replace(/'/g, "''")
+    const escaped = value
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "''")
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r")
+      .replace(/\t/g, "\\t")
     return `'${escaped}'`
   }
   if (typeof value === "boolean") return value ? "true" : "false"
@@ -50,7 +56,12 @@ export default function SqlEditorPage() {
   })
 
   const { database, setDatabase, loading } = useDatabase()
-  const [sql, setSql] = createSignal("-- Write your SQL query here\nSELECT * FROM person LIMIT 10;")
+  const [sqlState, setSqlState] = useLocalStorageStore({
+    key: "sql-editor-content",
+    defaultValue: { value: "-- Write your SQL query here\nSELECT * FROM person LIMIT 10;" },
+  })
+  const sql = () => sqlState.value
+  const setSql = (value: string) => setSqlState({ value })
   const [queryState, setQueryState] = createSignal<QueryState>({
     results: null,
     isLoading: false,
@@ -74,11 +85,17 @@ export default function SqlEditorPage() {
         if (!data.success || !data.data) return
 
         const schemas = new Map<string, TableSchema>()
+        const types = data.data.typespace.types
         for (const table of data.data.tables) {
-          const pkElements = (
-            table.primary_key as Array<{ elements: Array<{ name: string }> }>
-          )?.[0]?.elements
-          const pkCols = pkElements?.map((e) => e.name) ?? []
+          const pkIndices = table.primary_key as number[]
+          const typeRef = table.product_type_ref as number
+          const productType = types[typeRef] as
+            | { Product: { elements: Array<{ name?: { some: string } }> } }
+            | undefined
+          const elements = productType?.Product?.elements ?? []
+          const pkCols = pkIndices
+            .map((idx) => elements[idx]?.name?.some)
+            .filter((name): name is string => typeof name === "string")
           schemas.set(table.name, {
             name: table.name,
             primaryKeyColumns: pkCols,
@@ -198,7 +215,14 @@ export default function SqlEditorPage() {
       }
     }
 
-    toast.loading("Executing update...")
+    const toastId = toast.loading(
+      <div class="flex flex-col gap-1">
+        <span>Executing update...</span>
+        <button type="button" class="cursor-default text-left text-muted-foreground text-xs">
+          {updateSql.length > 50 ? `${updateSql.slice(0, 50)}...` : updateSql}
+        </button>
+      </div>
+    )
 
     try {
       const res = await honoClient.spacetime.sql.$post({
@@ -215,7 +239,7 @@ export default function SqlEditorPage() {
             <span>Row updated successfully</span>
             <Tippy
               content={<code class="whitespace-pre-wrap text-xs">{updateSql}</code>}
-              props={{ placement: "bottom" }}
+              props={{ placement: "bottom", zIndex: 9999999999 }}
             >
               <button
                 type="button"
@@ -225,16 +249,17 @@ export default function SqlEditorPage() {
                 {updateSql.length > 50 ? `${updateSql.slice(0, 50)}...` : updateSql}
               </button>
             </Tippy>
-          </div>
+          </div>,
+          { id: toastId }
         )
         await executeQuery()
       } else {
         const errorMsg = data.results?.[0]?.error || "Update failed"
-        toast.error(`Failed to update: ${errorMsg}`)
+        toast.error(`Failed to update: ${errorMsg}`, { id: toastId })
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to execute update"
-      toast.error(message)
+      toast.error(message, { id: toastId })
     }
   }
 
@@ -257,9 +282,10 @@ export default function SqlEditorPage() {
                 class="gap-1.5"
               >
                 Run Selected ({sel.statementCount})
-                <kbd class="hidden h-5 items-center gap-1 border border-border bg-muted px-1.5 font-medium font-mono text-[10px] text-muted-foreground opacity-80 sm:inline-flex">
-                  <span class="text-xs">⌘</span>⏎
-                </kbd>
+                <span class="hidden items-center gap-0.5 font-medium text-[11px] text-muted-foreground/60 sm:inline-flex">
+                  <span>⌘</span>
+                  <span>⏎</span>
+                </span>
               </Button>
             )}
           </Show>
@@ -312,9 +338,10 @@ export default function SqlEditorPage() {
             <Show when={!selectedQuery()}>Run</Show>
             <Show when={selectedQuery()}>Run All</Show>
             <Show when={!selectedQuery()}>
-              <kbd class="hidden h-5 items-center gap-1 border border-primary/30 bg-primary/10 px-1.5 font-medium font-mono text-[10px] text-primary-foreground/80 opacity-60 sm:inline-flex">
-                <span class="text-xs">⌘</span>⏎
-              </kbd>
+              <span class="hidden items-center gap-0.5 font-medium text-[11px] text-primary-foreground/50 sm:inline-flex">
+                <span>⌘</span>
+                <span>⏎</span>
+              </span>
             </Show>
           </Button>
         </div>
