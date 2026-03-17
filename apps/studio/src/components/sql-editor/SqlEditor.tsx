@@ -51,7 +51,7 @@ function selectedLinePlugin() {
         if (!selection.empty) {
           const fromLine = view.state.doc.lineAt(selection.from).number
           const toLine = view.state.doc.lineAt(selection.to).number
-          
+
           if (fromLine !== toLine) {
             for (let i = fromLine; i <= toLine; i++) {
               const lineStart = view.state.doc.line(i).from
@@ -74,9 +74,11 @@ function selectedLinePlugin() {
   )
 }
 
+const vimPanelZIndex = { zIndex: "10" }
+
 const darkEditorTheme = EditorView.theme({
-  "&": { height: "100%" },
-  ".cm-scroller": { overflow: "auto" },
+  "&": { height: "100%", display: "flex", flexDirection: "column" },
+  ".cm-scroller": { overflow: "auto", flex: "1" },
   ".cm-content": { padding: "12px" },
   "&.cm-focused .cm-cursor": { borderLeftColor: "#fff" },
   "&.cm-focused .cm-selectionBackground": {
@@ -88,11 +90,21 @@ const darkEditorTheme = EditorView.theme({
   ".cm-selected-line": {
     backgroundColor: "rgba(134, 239, 172, 0.15) !important",
   },
+  ".cm-vim-panel": {
+    fontFamily: '"Source Code Pro", monospace',
+    fontSize: "12px",
+    padding: "4px 8px",
+    backgroundColor: "#1a1a1a",
+    borderTop: "1px solid #262626",
+    color: "#a3a3a3",
+    ...vimPanelZIndex,
+  },
+  ".cm-panels": vimPanelZIndex,
 })
 
 const lightEditorTheme = EditorView.theme({
-  "&": { height: "100%", backgroundColor: "#fafafa" },
-  ".cm-scroller": { overflow: "auto" },
+  "&": { height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#fafafa" },
+  ".cm-scroller": { overflow: "auto", flex: "1" },
   ".cm-content": { padding: "12px", color: "#1a1a1a" },
   ".cm-gutters": { backgroundColor: "#fafafa", color: "#737373", border: "none" },
   ".cm-activeLineGutter": { backgroundColor: "#f5f5f5" },
@@ -106,6 +118,16 @@ const lightEditorTheme = EditorView.theme({
   ".cm-selected-line": {
     backgroundColor: "rgba(34, 197, 94, 0.15) !important",
   },
+  ".cm-vim-panel": {
+    fontFamily: '"Source Code Pro", monospace',
+    fontSize: "12px",
+    padding: "4px 8px",
+    backgroundColor: "#f5f5f5",
+    borderTop: "1px solid #e5e5e5",
+    color: "#525252",
+    ...vimPanelZIndex,
+  },
+  ".cm-panels": vimPanelZIndex,
 })
 
 const lightHighlightStyle = HighlightStyle.define([
@@ -189,7 +211,7 @@ export function SqlEditor(props: SqlEditorProps) {
     ]
 
     if (vimMode) {
-      ext.push(vim())
+      ext.push(vim({ status: true }))
       ext.push(isDark ? darkVimStyles : lightVimStyles)
     }
 
@@ -240,7 +262,7 @@ export function SqlEditor(props: SqlEditorProps) {
   return (
     <div
       ref={editorRef}
-      class={`h-full w-full overflow-hidden border border-border ${props.class || ""}`}
+      class={`h-full w-full border border-border ${props.class || ""}`}
     />
   )
 }
