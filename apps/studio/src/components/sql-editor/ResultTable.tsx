@@ -1,13 +1,27 @@
 import type { ColumnDef } from "@tanstack/solid-table"
 import { createSolidTable, flexRender, getCoreRowModel } from "@tanstack/solid-table"
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
+import { Tippy } from "@/lib/solid-tippy/tippy"
 import { cn } from "@/utils/cn"
 
 const EDIT_DIALOG_HEIGHT = 140
 
+export interface CellEdit {
+  rowIndex: number
+  columnId: string
+  oldValue: unknown
+  newValue: unknown
+  row: Record<string, unknown>
+  primaryKeyColumns: string[]
+  tableName: string | null
+}
+
 interface ResultTableProps {
   columns: string[]
   rows: Record<string, unknown>[]
+  tableName?: string | null
+  primaryKeyColumns?: string[]
+  onSave?: (edit: CellEdit) => Promise<void>
 }
 
 function CellValue(props: { value: unknown }) {
@@ -44,6 +58,8 @@ export function ResultTable(props: ResultTableProps) {
     col: string
     element: HTMLTableCellElement
   } | null>(null)
+  const [editValue, setEditValue] = createSignal<string>("")
+  const [isSaving, setIsSaving] = createSignal(false)
   const [isSelecting, setIsSelecting] = createSignal(false)
   const [selectionStart, setSelectionStart] = createSignal<{ row: number; col: string } | null>(
     null
@@ -131,6 +147,8 @@ export function ResultTable(props: ResultTableProps) {
 
   const handleCellDoubleClick = (e: MouseEvent, rowIndex: number, columnId: string) => {
     const target = e.currentTarget as HTMLTableCellElement
+    const currentValue = props.rows[rowIndex]?.[columnId]
+    setEditValue(String(currentValue ?? ""))
     setEditingCell({ row: rowIndex, col: columnId, element: target })
   }
 
@@ -162,12 +180,45 @@ export function ResultTable(props: ResultTableProps) {
     } as const
   }
 
+  const handleSave = async () => {
+    const editing = editingCell()
+    if (!editing) return
+
+    const oldValue = props.rows[editing.row]?.[editing.col]
+    const newValue = editValue()
+
+    if (props.onSave) {
+      setIsSaving(true)
+      try {
+        await props.onSave({
+          rowIndex: editing.row,
+          columnId: editing.col,
+          oldValue,
+          newValue,
+          row: props.rows[editing.row],
+          primaryKeyColumns: props.primaryKeyColumns ?? [],
+          tableName: props.tableName ?? null,
+        })
+        setEditingCell(null)
+      } catch (error) {
+        console.error("Failed to save:", error)
+      } finally {
+        setIsSaving(false)
+      }
+    } else {
+      setEditingCell(null)
+    }
+  }
+
   createEffect(() => {
     if (!editingCell()) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setEditingCell(null)
+      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        handleSave()
       }
     }
 
@@ -183,44 +234,80 @@ export function ResultTable(props: ResultTableProps) {
       aria-label="SQL query results table"
     >
       <Show when={editingCell()}>
-        <div
-          class="fixed z-50 min-w-[200px] border border-border bg-popover p-2 shadow-lg"
-          style={{
-            top: `${getDialogPosition().top}px`,
-            left: `${getDialogPosition().left}px`,
-            width: `${getDialogPosition().width}px`,
-          }}
-        >
-          <textarea
-            ref={(el) => {
-              queueMicrotask(() => el.focus())
-            }}
-            value={String(getEditingValue() ?? "")}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setEditingCell(null)
-              }
-            }}
-            class="w-full resize-none border border-border bg-background p-2 font-mono text-xs focus:border-primary focus:outline-none"
-            rows={3}
-          />
-          <div class="mt-1.5 flex justify-end gap-1.5">
-            <button
-              type="button"
-              disabled
-              class="cursor-not-allowed bg-primary/10 px-2 py-1 text-primary/50 text-xs"
+        {(editing) => {
+          const pkCols = props.primaryKeyColumns ?? []
+          const hasPk = pkCols.length > 0
+          return (
+            <div
+              class="fixed z-50 min-w-[200px] border border-border bg-popover p-2 shadow-lg"
+              style={{
+                top: `${getDialogPosition().top}px`,
+                left: `${getDialogPosition().left}px`,
+                width: `${getDialogPosition().width}px`,
+              }}
             >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditingCell(null)}
-              class="px-2 py-1 text-muted-foreground text-xs hover:bg-accent"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+              <textarea
+                ref={(el) => {
+                  queueMicrotask(() => el.focus())
+                }}
+                value={editValue()}
+                onInput={(e) => setEditValue(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setEditingCell(null)
+                  } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault()
+                    handleSave()
+                  }
+                }}
+                class="w-full resize-none border border-border bg-background p-2 font-mono text-xs focus:border-primary focus:outline-none"
+                rows={3}
+              />
+              <div class="mt-1.5 flex items-center justify-between">
+                <div class="text-[10px] text-muted-foreground">
+                  <Show when={hasPk && props.tableName}>
+                    <span class="font-mono">
+                      {pkCols.map((col) => (
+                        <>
+                          <span class="text-muted-foreground/70">{col}=</span>
+                          <span class="text-foreground">{String(props.rows[editing().row]?.[col] ?? "NULL")}</span>
+                        </>
+                      ))}
+                    </span>
+                  </Show>
+                  <Show when={!hasPk}>
+                    <Tippy content="Can't make an SQL query to target this cell" props={{ placement: "bottom" }}>
+                      <span class="italic">No primary key</span>
+                    </Tippy>
+                  </Show>
+                </div>
+                <div class="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving() || !props.onSave || !hasPk}
+                    class={cn(
+                      "px-2 py-1 text-xs",
+                      isSaving() && "cursor-wait opacity-50",
+                      props.onSave && hasPk
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "cursor-not-allowed bg-primary/10 text-primary/50"
+                    )}
+                  >
+                    {isSaving() ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingCell(null)}
+                    class="px-2 py-1 text-muted-foreground text-xs hover:bg-accent"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }}
       </Show>
       <table class="w-full select-none text-sm">
         <thead class="sticky top-0 z-10 bg-card">

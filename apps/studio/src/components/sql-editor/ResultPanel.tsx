@@ -3,7 +3,7 @@ import { type Component, For, Show } from "solid-js"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ResultTable } from "./ResultTable"
+import { ResultTable, type CellEdit } from "./ResultTable"
 
 const CheckIcon = (props: { class?: string }) => (
   <svg
@@ -36,6 +36,9 @@ interface ResultPanelProps {
   isLoading: boolean
   executionTime: number
   onClear: () => void
+  tableName?: string | null
+  primaryKeyColumns?: string[]
+  onSave?: (edit: CellEdit) => Promise<void>
 }
 
 function getStatementLabel(statement: string): string {
@@ -108,7 +111,13 @@ export const ResultPanel: Component<ResultPanelProps> = (props) => {
         </div>
       }
     >
-      <ResultTable columns={result.data!.columns} rows={result.data!.rows} />
+      <ResultTable
+        columns={result.data!.columns}
+        rows={result.data!.rows}
+        tableName={props.tableName}
+        primaryKeyColumns={props.primaryKeyColumns}
+        onSave={props.onSave}
+      />
     </Show>
   )
 

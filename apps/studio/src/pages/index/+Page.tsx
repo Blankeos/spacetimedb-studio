@@ -1,13 +1,16 @@
-import { createSignal, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, Show } from "solid-js"
+import { toast } from "solid-sonner"
 import { useMetadata } from "vike-metadata-solid"
 import { PageHeader } from "@/components/page-header"
 import { ResultPanel, type StatementResult } from "@/components/sql-editor/ResultPanel"
+import type { CellEdit } from "@/components/sql-editor/ResultTable"
 import { SqlEditor } from "@/components/sql-editor/SqlEditor"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Resizable, ResizableHandle, ResizablePanel } from "@/components/ui/resizable"
 import { useDatabase } from "@/contexts/database"
 import { honoClient } from "@/lib/hono-client"
+import { Tippy } from "@/lib/solid-tippy/tippy"
 import getTitle from "@/utils/get-title"
 
 interface QueryState {
@@ -15,6 +18,30 @@ interface QueryState {
   isLoading: boolean
   executionTime: number
   lastExecutedAt: Date | null
+}
+
+interface TableSchema {
+  name: string
+  primaryKeyColumns: string[]
+}
+
+function extractTableNameFromQuery(sql: string): string | null {
+  const normalizedSql = sql.trim().toLowerCase()
+  const fromMatch = normalizedSql.match(/(?:from|join)\s+([`"]?[\w]+[`"]?)/i)
+  if (fromMatch?.[1]) {
+    return fromMatch[1].replace(/[`"]/g, "")
+  }
+  return null
+}
+
+function formatSqlValue(value: unknown): string {
+  if (value === null || value === undefined) return "NULL"
+  if (typeof value === "string") {
+    const escaped = value.replace(/'/g, "''")
+    return `'${escaped}'`
+  }
+  if (typeof value === "boolean") return value ? "true" : "false"
+  return String(value)
 }
 
 export default function SqlEditorPage() {
@@ -29,6 +56,46 @@ export default function SqlEditorPage() {
     isLoading: false,
     executionTime: 0,
     lastExecutedAt: null,
+  })
+  const [tableSchemas, setTableSchemas] = createSignal<Map<string, TableSchema>>(new Map())
+
+  createEffect(() => {
+    const db = database()
+    if (!db) return
+
+    honoClient.spacetime.describe
+      .$get({ query: { db } })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success || !data.data) return
+
+        const schemas = new Map<string, TableSchema>()
+        for (const table of data.data.tables) {
+          const pkElements = (table.primary_key as Array<{ elements: Array<{ name: string }> }>)?.[0]?.elements
+          const pkCols = pkElements?.map((e) => e.name) ?? []
+          schemas.set(table.name, {
+            name: table.name,
+            primaryKeyColumns: pkCols,
+          })
+        }
+        setTableSchemas(schemas)
+      })
+      .catch(() => {
+        // Silently fail - we'll just not have schema info
+      })
+  })
+
+  const currentTableName = createMemo(() => {
+    const currentSql = sql()
+    return extractTableNameFromQuery(currentSql)
+  })
+
+  const currentPrimaryKeyColumns = createMemo(() => {
+    const tableName = currentTableName()
+    if (!tableName) return []
+
+    const schema = tableSchemas().get(tableName)
+    return schema?.primaryKeyColumns ?? []
   })
 
   const handleDatabaseChange = (db: string) => {
@@ -98,6 +165,70 @@ export default function SqlEditorPage() {
       executionTime: 0,
       lastExecutedAt: null,
     })
+  }
+
+  const handleCellSave = async (edit: CellEdit) => {
+    const { tableName, primaryKeyColumns, columnId, newValue, row } = edit
+
+    if (!tableName || primaryKeyColumns.length === 0) {
+      toast.error("Cannot save: No primary key found for this table")
+      return
+    }
+
+    const setClause = `${columnId} = ${formatSqlValue(newValue)}`
+    const whereClause = primaryKeyColumns
+      .map((col) => `${col} = ${formatSqlValue(row[col])}`)
+      .join(" AND ")
+
+    const updateSql = `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause};`
+
+    const copyToClipboard = async () => {
+      try {
+        await navigator.clipboard.writeText(updateSql)
+        toast.success("SQL copied to clipboard")
+      } catch {
+        toast.error("Failed to copy")
+      }
+    }
+
+    toast.loading("Executing update...")
+
+    try {
+      const res = await honoClient.spacetime.sql.$post({
+        json: {
+          sql: updateSql,
+          database: database()!,
+        },
+      })
+      const data = await res.json()
+
+      if (data.results?.[0]?.success) {
+        toast.success(
+          <div class="flex flex-col gap-1">
+            <span>Row updated successfully</span>
+            <Tippy
+              content={<code class="whitespace-pre-wrap text-xs">{updateSql}</code>}
+              props={{ placement: "bottom" }}
+            >
+              <button
+                type="button"
+                onClick={copyToClipboard}
+                class="cursor-pointer text-left text-muted-foreground text-xs underline decoration-dotted hover:text-foreground"
+              >
+                {updateSql.length > 50 ? `${updateSql.slice(0, 50)}...` : updateSql}
+              </button>
+            </Tippy>
+          </div>
+        )
+        await executeQuery()
+      } else {
+        const errorMsg = data.results?.[0]?.error || "Update failed"
+        toast.error(`Failed to update: ${errorMsg}`)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to execute update"
+      toast.error(message)
+    }
   }
 
   return (
@@ -192,6 +323,9 @@ export default function SqlEditorPage() {
               isLoading={queryState().isLoading}
               executionTime={queryState().executionTime}
               onClear={clearResults}
+              tableName={currentTableName()}
+              primaryKeyColumns={currentPrimaryKeyColumns()}
+              onSave={handleCellSave}
             />
           </ResizablePanel>
         </Resizable>

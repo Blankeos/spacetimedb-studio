@@ -1,6 +1,7 @@
 import { createEffect, createSignal, type FlowProps, For, Show } from "solid-js"
 import { useMetadata } from "vike-metadata-solid"
 import { usePageContext } from "vike-solid/usePageContext"
+import { Toaster } from "solid-sonner"
 import "@/styles/app.css"
 import "@/lib/solid-tippy/tippy.css"
 import { openSettingsPalette, SettingsCommandPalette } from "@/components/settings-command-palette"
@@ -16,7 +17,7 @@ import {
 import { DatabaseProvider, useDatabase } from "@/contexts/database"
 import { SidebarProvider, useSidebar } from "@/contexts/sidebar"
 import { SpacetimeProvider } from "@/contexts/spacetime"
-import { ThemeProvider, themeInitScript } from "@/contexts/theme"
+import { ThemeProvider, themeInitScript, useThemeContext } from "@/contexts/theme"
 import { VimModeProvider } from "@/contexts/vim-mode"
 import {
   DocumentationIcon,
@@ -338,6 +339,11 @@ function DatabaseInitializer(props: { children: unknown }) {
   return <>{props.children}</>
 }
 
+function ToastProvider() {
+  const { inferredTheme } = useThemeContext()
+  return <Toaster theme={inferredTheme()} richColors />
+}
+
 export default function RootLayout(props: FlowProps) {
   return (
     <>
@@ -361,6 +367,7 @@ export default function RootLayout(props: FlowProps) {
             </SpacetimeProvider>
           </DatabaseProvider>
         </VimModeProvider>
+        <ToastProvider />
       </ThemeProvider>
     </>
   )
