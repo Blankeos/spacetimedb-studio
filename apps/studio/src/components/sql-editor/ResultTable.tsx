@@ -165,7 +165,7 @@ export function ResultTable(props: ResultTableProps) {
     >
       <Show when={editingCell()}>
         <div
-          class="fixed z-50 min-w-[200px] rounded border border-primary bg-popover p-2 shadow-lg"
+          class="fixed z-50 min-w-[200px] rounded border border-border bg-popover p-2 shadow-lg"
           style={{
             top: `${getEditingRect()?.top ?? 0}px`,
             left: `${getEditingRect()?.left ?? 0}px`,
@@ -173,6 +173,9 @@ export function ResultTable(props: ResultTableProps) {
           }}
         >
           <textarea
+            ref={(el) => {
+              queueMicrotask(() => el.focus())
+            }}
             value={String(getEditingValue() ?? "")}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
@@ -181,7 +184,6 @@ export function ResultTable(props: ResultTableProps) {
             }}
             class="w-full resize-none rounded border border-border bg-background p-2 font-mono text-xs focus:border-primary focus:outline-none"
             rows={3}
-            autofocus
           />
           <div class="mt-1.5 flex justify-end gap-1.5">
             <button
