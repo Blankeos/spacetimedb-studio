@@ -1,22 +1,14 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(npx tsc:*)",
-      "Bash(npm run:*)",
-      "Bash(bunx tsc:*)",
-      "Bash(bunx run:*)",
-      "Bash(find /Users/carlo/Desktop/Projects/spacetimedb-studio/_tmp_solid-launch/src -type f -name *context* -o -name *menu* -o -name *dropdown* -o -name *popover*)",
-      "Bash(find /Users/carlo/Desktop/Projects/gittydocs -maxdepth 2 -type f \\\\\\(-name *.json -o -name *.yml -o -name *.yaml \\\\\\))",
-      "Bash(sort -u grep -o '@brillout[^\"\"\"\"''''\\)\\\\s]*' /Users/carlo/Desktop/Projects/spacetimedb-studio/packages/cli/dist/studio/dist/server/chunks/chunk-BHnGMSvd.js)",
-      "Bash(bun run:*)",
-      "Bash(git -C /Users/carlo/Desktop/Projects/spacetimedb-studio status apps/studio/dist/)",
-      "Bash(grep -r \"compile\\\\|standalone\\\\|bun build\" /Users/carlo/Desktop/Projects/spacetimedb-studio/apps/studio/node_modules/vike-photon/dist --include=*.js)",
-      "Bash(sort -k6,7)",
-      "Bash(grep -r \"bun build\\\\|bun compile\\\\|Bun.build\" /Users/carlo/Desktop/Projects/spacetimedb-studio --include=*.ts --include=*.js --include=*.mjs --include=*.json --include=*.sh)",
-      "Bash(find /Users/carlo/Desktop/Projects/spacetimedb-studio -maxdepth 3 -path */.github/workflows* -type f)",
       "Bash(NODE_ENV=production bunx --bun vike build --help)",
       "Bash(xargs cat:*)",
-      "Bash(grep -r \"writeBundle\\\\|generateBundle\\\\|build.*hook\\\\|onBuild\\\\|postBuild\" /Users/carlo/Desktop/Projects/spacetimedb-studio/apps/studio --include=*.ts --include=*.js)"
+      "Bash(grep -r \"writeBundle\\\\|generateBundle\\\\|build.*hook\\\\|onBuild\\\\|postBuild\" /Users/carlo/Desktop/Projects/spacetimedb-studio/apps/studio --include=*.ts --include=*.js)",
+      "Bash(npm show:*)",
+      "Bash(find /Users/carlo/Desktop/Projects/spacetimedb-studio/node_modules/@photonjs -name *.mjs -o -name *.js)",
+      "Bash(find /Users/carlo/Desktop/Projects/spacetimedb-studio -path */node_modules/@photonjs/hono -type d)",
+      "Bash(grep -o \"\"[^\"\"]*client[^\"\"]*\"\" /Users/carlo/Desktop/Projects/spacetimedb-studio/apps/studio/dist/server/bundled.mjs)",
+      "Bash(grep -oE '.{0,120}function serveStatic.{0,300}' /Users/carlo/Desktop/Projects/spacetimedb-studio/apps/studio/dist/server/bundled.mjs)",
+      "Bash(lsof -ti:5555)",
+      "Bash(xargs kill:*)",
+      "Bash(timeout 10 ./dist/spacetime-studio vike-ts)"
     ]
   }
 }
