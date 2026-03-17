@@ -26,6 +26,8 @@ interface SchemaNode extends NodeBase {
 
 interface SchemaEdge extends EdgeBase {
   type: "reference"
+  sourceColumn?: string
+  targetColumn?: string
 }
 
 const SchemaFlow = createFlow<SchemaNode, SchemaEdge>()
@@ -67,6 +69,9 @@ function schemaToGraph(describe: SpacetimeDescribe): { nodes: SchemaNode[]; edge
   const nodes: SchemaNode[] = []
   const edges: SchemaEdge[] = []
 
+  // Map from table name → primary key column name
+  const tablePKs = new Map<string, string>()
+
   describe.tables.forEach((table) => {
     if (!("User" in table.table_type)) return
 
@@ -74,7 +79,14 @@ function schemaToGraph(describe: SpacetimeDescribe): { nodes: SchemaNode[]; edge
     const columns: Array<{ name: string; type: string; primary?: boolean }> = []
 
     if (typeDef && "Product" in typeDef) {
-      const pkFields = table.primary_key?.[0]?.elements?.map((e: { name: string }) => e.name) || []
+      // primary_key is an array of column indices (e.g. [0])
+      const pkIndices = (table.primary_key as unknown as number[]) || []
+      const pkColumnNames = new Set(
+        pkIndices
+          .map((idx) => typeDef.Product.elements[idx]?.name?.some)
+          .filter(Boolean) as string[]
+      )
+
       for (const el of typeDef.Product.elements) {
         const name = el.name?.some || "_"
         const typeName = getTypeNameSimple(
@@ -82,24 +94,44 @@ function schemaToGraph(describe: SpacetimeDescribe): { nodes: SchemaNode[]; edge
           describe.types,
           describe.typespace.types
         )
-        columns.push({
-          name,
-          type: typeName,
-          primary: pkFields.includes(name),
-        })
+        columns.push({ name, type: typeName, primary: pkColumnNames.has(name) })
       }
+
+      // Store the first PK column for FK detection
+      const firstPK = pkIndices[0] !== undefined ? typeDef.Product.elements[pkIndices[0]]?.name?.some : undefined
+      if (firstPK) tablePKs.set(table.name, firstPK)
     }
 
     nodes.push({
       id: `table-${table.name}`,
       type: "table",
       position: { x: 0, y: 0 },
-      data: {
-        name: table.name,
-        columns,
-      },
+      data: { name: table.name, columns },
     })
   })
+
+  // Detect FK relationships: column named `{tableName}_id` → references `{tableName}.pk`
+  for (const node of nodes) {
+    const tableName = node.data.name as string
+    const columns = node.data.columns as Array<{ name: string; primary?: boolean }>
+    for (const col of columns) {
+      if (col.primary) continue
+      if (!col.name.endsWith("_id")) continue
+      const referencedTable = col.name.slice(0, -3) // strip "_id"
+      const sourceNodeId = `table-${referencedTable}`
+      const sourceNode = nodes.find((n) => n.id === sourceNodeId)
+      if (!sourceNode) continue
+      const pkCol = tablePKs.get(referencedTable)
+      edges.push({
+        id: `fk-${referencedTable}-${tableName}-${col.name}`,
+        source: sourceNodeId,
+        target: node.id,
+        type: "reference",
+        sourceColumn: pkCol,
+        targetColumn: col.name,
+      })
+    }
+  }
 
   return { nodes, edges }
 }

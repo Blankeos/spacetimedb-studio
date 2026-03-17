@@ -1,4 +1,4 @@
-import { type Component, createEffect, createSignal, For, type JSX, on } from "solid-js"
+import { type Component, createEffect, createMemo, createSignal, For, type JSX, on, Show } from "solid-js"
 import { fitView, getEdgePositions, layoutDAG } from "./layout"
 import type { EdgeBase, FlowProps, NodeBase, Position } from "./types"
 import "./flow.css"
@@ -29,6 +29,7 @@ function createFlow<N extends NodeBase, E extends EdgeBase>() {
           class={`edge-path ${props.selected ? "selected" : ""}`}
           d={`M ${props.sourcePos.x} ${props.sourcePos.y} C ${props.sourcePos.x} ${ctrl1Y()}, ${props.targetPos.x} ${ctrl2Y()}, ${props.targetPos.x} ${props.targetPos.y}`}
           fill="none"
+          marker-end={props.selected ? "url(#arrow-selected)" : "url(#arrow)"}
         />
         {props.selected && (
           <g transform={`translate(${midX()}, ${midY()})`}>
@@ -119,7 +120,8 @@ function createFlow<N extends NodeBase, E extends EdgeBase>() {
             }
             setNodePositions(positions)
           }
-        }
+        },
+        { defer: false }
       )
     )
 
@@ -146,10 +148,11 @@ function createFlow<N extends NodeBase, E extends EdgeBase>() {
       })
     )
 
-    const edgePositions = () => {
+    const edgePositions = createMemo(() => {
       const positions: Map<string, { source: Position; target: Position }> = new Map()
+      const nodes = nodesWithPositions()
       for (const edge of props.edges) {
-        const pos = getEdgePositions(nodesWithPositions(), edge)
+        const pos = getEdgePositions(nodes, edge)
         if (pos) {
           positions.set(edge.id, {
             source: { x: pos.sourceX, y: pos.sourceY },
@@ -158,7 +161,7 @@ function createFlow<N extends NodeBase, E extends EdgeBase>() {
         }
       }
       return positions
-    }
+    })
 
     const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement
@@ -244,21 +247,46 @@ function createFlow<N extends NodeBase, E extends EdgeBase>() {
           }}
         >
           <svg class="edges-layer">
+            <defs>
+              <marker
+                id="arrow"
+                markerWidth="10"
+                markerHeight="7"
+                refX="9"
+                refY="3.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3.5, 0 7" class="edge-arrow-marker" />
+              </marker>
+              <marker
+                id="arrow-selected"
+                markerWidth="10"
+                markerHeight="7"
+                refX="9"
+                refY="3.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3.5, 0 7" class="edge-arrow-marker selected" />
+              </marker>
+            </defs>
             <For each={props.edges}>
               {(edge) => {
-                const pos = edgePositions().get(edge.id)
-                if (!pos) return null
+                const pos = () => edgePositions().get(edge.id)
                 return (
-                  <EdgeRenderer
-                    edge={edge}
-                    sourcePos={pos.source}
-                    targetPos={pos.target}
-                    selected={selectedEdge() === edge.id}
-                    onClick={() => {
-                      setSelectedEdge(edge.id)
-                      props.onEdgeClick?.(edge)
-                    }}
-                  />
+                  <Show when={pos()}>
+                    {(p) => (
+                      <EdgeRenderer
+                        edge={edge}
+                        sourcePos={p().source}
+                        targetPos={p().target}
+                        selected={selectedEdge() === edge.id}
+                        onClick={() => {
+                          setSelectedEdge(edge.id)
+                          props.onEdgeClick?.(edge)
+                        }}
+                      />
+                    )}
+                  </Show>
                 )
               }}
             </For>

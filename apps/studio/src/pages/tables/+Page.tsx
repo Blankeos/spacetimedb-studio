@@ -154,8 +154,8 @@ export default function TablesPage() {
       },
       onInsert: (row) => {
         setQueryResult((prev) => {
+          const columns = Object.keys(row)
           if (!prev) {
-            const columns = Object.keys(row)
             return { rows: [row], columns, numRows: 1 }
           }
           const rowKey = serializeRow(row)
@@ -163,6 +163,7 @@ export default function TablesPage() {
           if (exists) return prev
           return {
             ...prev,
+            columns: prev.columns.length > 0 ? prev.columns : columns,
             rows: [...prev.rows, row],
             numRows: prev.numRows + 1,
           }

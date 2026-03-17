@@ -68,6 +68,22 @@
   --flow-edge-selected: #e38b29;
 }
 
+.edge-arrow-marker {
+  fill: var(--flow-edge-color, #94a3b8);
+}
+
+:root.dark .edge-arrow-marker {
+  fill: #666;
+}
+
+.edge-arrow-marker.selected {
+  fill: var(--flow-edge-selected, #f97316);
+}
+
+:root.dark .edge-arrow-marker.selected {
+  fill: #e38b29;
+}
+
 .edge-delete-circle {
   fill: var(--flow-delete-bg, #dc2626);
   cursor: pointer;
