@@ -5,7 +5,8 @@
       "Bash(npm run:*)",
       "Bash(bunx tsc:*)",
       "Bash(bunx run:*)",
-      "Bash(find /Users/carlo/Desktop/Projects/spacetimedb-studio/_tmp_solid-launch/src -type f -name *context* -o -name *menu* -o -name *dropdown* -o -name *popover*)"
+      "Bash(find /Users/carlo/Desktop/Projects/spacetimedb-studio/_tmp_solid-launch/src -type f -name *context* -o -name *menu* -o -name *dropdown* -o -name *popover*)",
+      "Bash(find /Users/carlo/Desktop/Projects/gittydocs -maxdepth 2 -type f \\\\\\(-name *.json -o -name *.yml -o -name *.yaml \\\\\\))"
     ]
   }
 }
