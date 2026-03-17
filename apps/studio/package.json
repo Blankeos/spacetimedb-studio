@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "bunx --bun vike dev",
-    "build": "bunx --bun vike build",
+    "build": "NODE_ENV=production bunx --bun vike build && NODE_ENV=production bun build dist/server/index.mjs --bundle --target bun --outfile dist/server/bundled.mjs",
     "preview": "NODE_ENV=production bun run dist/server/index.mjs",
     "preview-static": "vite preview",
     "check": "tsc --noemit",

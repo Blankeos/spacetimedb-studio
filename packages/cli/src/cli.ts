@@ -9,73 +9,48 @@ import { join, resolve } from "path"
 const DEFAULT_PORT = 5555
 const DEFAULT_HOST = "localhost"
 
-function findStudioPath(): string | null {
-  // 1. Check environment variable override
+// Returns the path to the bundled studio server JS file.
+// The bundled server expects client/ to be at ../client relative to itself.
+function findStudioServer(): string | null {
   if (process.env.SPACETIME_STUDIO_PATH) {
     if (existsSync(process.env.SPACETIME_STUDIO_PATH)) {
       return process.env.SPACETIME_STUDIO_PATH
     }
   }
 
-  // 2. Use import.meta.dir which works in both dev and compiled mode
   const baseDir = import.meta.dir
-
-  // Check if we're in compiled mode - bun compile puts us in /$bunfs/root
   const isCompiled = baseDir === "/$bunfs/root" || baseDir === "/$bunfs"
 
-  // For bundled (non-compiled) installs: studio is at dist/studio relative to this file
-  if (!isCompiled) {
-    const bundledStudioPath = join(baseDir, "studio")
-    if (existsSync(join(bundledStudioPath, "dist/server/index.mjs"))) {
-      return bundledStudioPath
-    }
+  const candidates = isCompiled
+    ? [
+        join(process.cwd(), "dist/studio/server.mjs"),
+        join(process.cwd(), "../../apps/studio/dist/server/bundled.mjs"),
+      ]
+    : [
+        // Dev: apps/studio bundled server
+        resolve(baseDir, "../../../apps/studio/dist/server/bundled.mjs"),
+        // Installed package: bundled server alongside this CLI file
+        join(baseDir, "studio/server.mjs"),
+        // cwd fallbacks
+        join(process.cwd(), "apps/studio/dist/server/bundled.mjs"),
+        join(process.cwd(), "dist/studio/server.mjs"),
+      ]
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate
   }
 
-  // For compiled binaries: prioritize paths relative to cwd
-  if (isCompiled) {
-    // Check packages/cli/dist/studio (for running from packages/cli)
-    const cliDistPath = join(process.cwd(), "dist/studio")
-    if (existsSync(join(cliDistPath, "dist/server/index.mjs"))) {
-      // Check if apps/studio exists (for node_modules)
-      const appsStudioPath = join(process.cwd(), "../../apps/studio")
-      if (existsSync(join(appsStudioPath, "dist/server/index.mjs"))) {
-        return appsStudioPath // Prefer original location for node_modules access
-      }
-      return cliDistPath
-    }
+  return null
+}
 
-    // Check current working directory for studio folder
-    const cwdStudioPath = join(process.cwd(), "studio")
-    if (existsSync(join(cwdStudioPath, "dist/server/index.mjs"))) {
-      return cwdStudioPath
-    }
-
-    // Check apps/studio from cwd (for monorepo root)
-    const cwdAppsPath = join(process.cwd(), "apps/studio")
-    if (existsSync(join(cwdAppsPath, "dist/server/index.mjs"))) {
-      return cwdAppsPath
-    }
-
-    return null
-  }
-
-  // Development mode: apps/studio relative to packages/cli/src
+// Finds the studio directory for --dev mode (needs bun + node_modules)
+function findStudioPathForDev(): string | null {
+  const baseDir = import.meta.dir
   const devPath = resolve(baseDir, "../../../apps/studio")
-  const devServerPath = join(devPath, "dist/server/index.mjs")
-  if (existsSync(devServerPath)) {
-    return devPath
-  }
-
-  // Fallback: check cwd-based paths
-  const cwdStudioPath = join(process.cwd(), "studio")
-  if (existsSync(join(cwdStudioPath, "dist/server/index.mjs"))) {
-    return cwdStudioPath
-  }
+  if (existsSync(join(devPath, "dist/server/index.mjs"))) return devPath
 
   const cwdAppsPath = join(process.cwd(), "apps/studio")
-  if (existsSync(join(cwdAppsPath, "dist/server/index.mjs"))) {
-    return cwdAppsPath
-  }
+  if (existsSync(join(cwdAppsPath, "dist/server/index.mjs"))) return cwdAppsPath
 
   return null
 }
@@ -89,29 +64,8 @@ function debugPaths(): void {
   console.log(chalk.gray(`  isCompiled: ${isCompiled}`))
   console.log(chalk.gray(`  cwd: ${process.cwd()}`))
 
-  if (isCompiled) {
-    const cliDistPath = join(process.cwd(), "dist/studio")
-    const appsStudioPath = join(process.cwd(), "../../apps/studio")
-
-    console.log(chalk.gray(`  cliDistPath: ${cliDistPath}`))
-    console.log(
-      chalk.gray(
-        `  cliDistPath server exists: ${existsSync(join(cliDistPath, "dist/server/index.mjs"))}`
-      )
-    )
-    console.log(chalk.gray(`  appsStudioPath: ${appsStudioPath}`))
-    console.log(
-      chalk.gray(
-        `  appsStudioPath server exists: ${existsSync(join(appsStudioPath, "dist/server/index.mjs"))}`
-      )
-    )
-  } else {
-    const devPath = resolve(baseDir, "../../../apps/studio")
-    console.log(chalk.gray(`  devPath: ${devPath}`))
-    console.log(
-      chalk.gray(`  devServerPath exists: ${existsSync(join(devPath, "dist/server/index.mjs"))}`)
-    )
-  }
+  const studioServer = findStudioServer()
+  console.log(chalk.gray(`  studio server: ${studioServer ?? "not found"}`))
 }
 
 program
@@ -172,24 +126,6 @@ program
         )
       }
 
-      // Set environment for the studio app
-      process.env.SPACETIME_DB = dbName
-      process.env.PORT = String(port)
-      process.env.HOST = host
-
-      // Find studio path
-      const studioPath = findStudioPath()
-
-      if (!studioPath) {
-        console.error(chalk.red("\n  Error: Studio app not found."))
-        console.log(chalk.gray("\n  The studio assets are not bundled."))
-        console.log(chalk.gray("  For development, run from the project root:"))
-        console.log(chalk.cyan("    cd packages/cli && bun run src/cli.ts <database>"))
-        console.log(chalk.gray("\n  For production, build first:"))
-        console.log(chalk.cyan("    cd packages/cli && bun run build"))
-        process.exit(1)
-      }
-
       const studioUrl = `http://${host}:${port}`
       console.log(chalk.green(`\n  Studio running at: ${chalk.bold(studioUrl)}`))
       if (devMode) {
@@ -197,24 +133,25 @@ program
       }
       console.log(chalk.gray(`  Press Ctrl+C to stop\n`))
 
-      // Run the studio - always use bun to run the server script
-      const serverPath = join(studioPath, "dist/server/index.mjs")
-
-      if (!existsSync(serverPath)) {
-        console.error(chalk.red("\n  Error: Studio not built."))
-        console.log(chalk.gray("  Run: cd apps/studio && bun run build"))
-        process.exit(1)
+      const serverEnv = {
+        ...process.env,
+        SPACETIME_DB: dbName,
+        PORT: String(port),
+        HOST: host,
+        NODE_ENV: "production",
       }
 
       if (devMode) {
-        // Development: spawn vike dev server
+        const studioPath = findStudioPathForDev()
+        if (!studioPath) {
+          console.error(chalk.red("\n  Error: Studio source not found for dev mode."))
+          console.log(chalk.gray("  Run from the monorepo root with apps/studio built."))
+          process.exit(1)
+        }
+
         const serverProcess = spawn("bun", ["run", "dev"], {
           cwd: studioPath,
-          env: {
-            ...process.env,
-            SPACETIME_DB: dbName,
-            PORT: String(port),
-          },
+          env: { ...serverEnv, NODE_ENV: "development" },
           stdio: "inherit",
           shell: true,
         })
@@ -230,16 +167,17 @@ program
           process.exit(0)
         })
       } else {
-        // Production: run the built server from studio path
-        // Note: studioPath should point to apps/studio which has node_modules
-        const serverProcess = spawn("bun", ["run", serverPath], {
-          cwd: studioPath,
-          env: {
-            ...process.env,
-            SPACETIME_DB: dbName,
-            PORT: String(port),
-            NODE_ENV: "production",
-          },
+        const studioServer = findStudioServer()
+
+        if (!studioServer) {
+          console.error(chalk.red("\n  Error: studio-server not found."))
+          console.log(chalk.gray("\n  Build the studio first:"))
+          console.log(chalk.cyan("    bun run build"))
+          process.exit(1)
+        }
+
+        const serverProcess = spawn("bun", ["run", studioServer], {
+          env: serverEnv,
           stdio: "inherit",
         })
 
