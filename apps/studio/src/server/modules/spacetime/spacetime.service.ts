@@ -538,11 +538,12 @@ export async function getTablesWithCounts(database: string): Promise<TableInfo[]
 
   for (const table of tables) {
     try {
-      const result = await executeSqlRaw(database, `SELECT COUNT(*) FROM ${table.name};`)
-      if (result.rows.length > 0 && result.columns.includes("count(*)")) {
-        const countValue = result.rows[0]["count(*)"]
-        table.rowCount =
-          typeof countValue === "number" ? countValue : parseInt(String(countValue), 10)
+      const result = await executeSqlRaw(database, `SELECT COUNT(*) AS count FROM ${table.name};`)
+      if (result.rows.length > 0 && result.columns.length > 0) {
+        const firstCol = result.columns[0]
+        const countValue = result.rows[0][firstCol]
+        const parsed = typeof countValue === "number" ? countValue : parseInt(String(countValue), 10)
+        table.rowCount = isNaN(parsed) ? null : parsed
       }
     } catch {
       table.rowCount = null
