@@ -1,6 +1,7 @@
 {
   "name": "@spacetimedb-studio/studio",
   "version": "0.0.1",
+  "private": true,
   "description": "SpacetimeDB Studio - Local web-based database studio",
   "type": "module",
   "scripts": {
