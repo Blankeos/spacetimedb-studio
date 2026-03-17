@@ -1,5 +1,11 @@
 # spacetime-studio
 
+## 0.0.2
+
+### Patch Changes
+
+- [`53bc966`](https://github.com/Blankeos/spacetimedb-studio/commit/53bc9669484efb20b17a3868e34f8f3650e5c3b0) Thanks [@Blankeos](https://github.com/Blankeos)! - fix: binary for publish.
+
 ## 0.0.1
 
 ### Patch Changes
