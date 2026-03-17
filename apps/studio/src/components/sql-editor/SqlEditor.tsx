@@ -51,9 +51,18 @@ function selectedLinePlugin() {
         if (!selection.empty) {
           const fromLine = view.state.doc.lineAt(selection.from).number
           const toLine = view.state.doc.lineAt(selection.to).number
-          for (let i = fromLine; i <= toLine; i++) {
-            const lineStart = view.state.doc.line(i).from
-            builder.add(lineStart, lineStart, selectedLineHighlight)
+          
+          if (fromLine !== toLine) {
+            for (let i = fromLine; i <= toLine; i++) {
+              const lineStart = view.state.doc.line(i).from
+              builder.add(lineStart, lineStart, selectedLineHighlight)
+            }
+          } else {
+            const line = view.state.doc.line(fromLine)
+            const coversFullLine = selection.from <= line.from && selection.to >= line.to - 1
+            if (coversFullLine) {
+              builder.add(line.from, line.from, selectedLineHighlight)
+            }
           }
         }
         return builder.finish()
