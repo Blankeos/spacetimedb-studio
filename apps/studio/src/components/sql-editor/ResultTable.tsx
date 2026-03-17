@@ -3,6 +3,8 @@ import { createSolidTable, flexRender, getCoreRowModel } from "@tanstack/solid-t
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 import { cn } from "@/utils/cn"
 
+const EDIT_DIALOG_HEIGHT = 140
+
 interface ResultTableProps {
   columns: string[]
   rows: Record<string, unknown>[]
@@ -143,6 +145,23 @@ export function ResultTable(props: ResultTableProps) {
 
   const getEditingRect = () => editingCell()?.element.getBoundingClientRect()
 
+  const getDialogPosition = () => {
+    const rect = getEditingRect()
+    if (!rect) return { top: 0, left: 0, width: 200, placement: "below" as const }
+
+    const viewportHeight = window.innerHeight
+    const spaceBelow = viewportHeight - rect.bottom
+    const spaceAbove = rect.top
+    const placeAbove = spaceBelow < EDIT_DIALOG_HEIGHT && spaceAbove > spaceBelow
+
+    return {
+      top: placeAbove ? rect.top - EDIT_DIALOG_HEIGHT : rect.top,
+      left: rect.left,
+      width: rect.width,
+      placement: placeAbove ? "above" : "below",
+    } as const
+  }
+
   createEffect(() => {
     if (!editingCell()) return
 
@@ -165,11 +184,11 @@ export function ResultTable(props: ResultTableProps) {
     >
       <Show when={editingCell()}>
         <div
-          class="fixed z-50 min-w-[200px] rounded border border-border bg-popover p-2 shadow-lg"
+          class="fixed z-50 min-w-[200px] border border-border bg-popover p-2 shadow-lg"
           style={{
-            top: `${getEditingRect()?.top ?? 0}px`,
-            left: `${getEditingRect()?.left ?? 0}px`,
-            width: `${getEditingRect()?.width ?? 200}px`,
+            top: `${getDialogPosition().top}px`,
+            left: `${getDialogPosition().left}px`,
+            width: `${getDialogPosition().width}px`,
           }}
         >
           <textarea
@@ -182,21 +201,21 @@ export function ResultTable(props: ResultTableProps) {
                 setEditingCell(null)
               }
             }}
-            class="w-full resize-none rounded border border-border bg-background p-2 font-mono text-xs focus:border-primary focus:outline-none"
+            class="w-full resize-none border border-border bg-background p-2 font-mono text-xs focus:border-primary focus:outline-none"
             rows={3}
           />
           <div class="mt-1.5 flex justify-end gap-1.5">
             <button
               type="button"
               disabled
-              class="cursor-not-allowed rounded bg-primary/10 px-2 py-1 text-primary/50 text-xs"
+              class="cursor-not-allowed bg-primary/10 px-2 py-1 text-primary/50 text-xs"
             >
               Save
             </button>
             <button
               type="button"
               onClick={() => setEditingCell(null)}
-              class="rounded px-2 py-1 text-muted-foreground text-xs hover:bg-accent"
+              class="px-2 py-1 text-muted-foreground text-xs hover:bg-accent"
             >
               Cancel
             </button>
