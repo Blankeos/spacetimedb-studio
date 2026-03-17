@@ -1,5 +1,192 @@
 import { spawn } from "node:child_process"
 
+const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+
+function uuidToHex(uuid: string): string {
+  const hex = uuid.replace(/-/g, "")
+  return `0x${hex}`
+}
+
+function transformUuidsToHex(sql: string): string {
+  return sql.replace(
+    /'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'/g,
+    (_, uuid) => {
+      if (UUID_REGEX.test(uuid)) {
+        return uuidToHex(uuid)
+      }
+      return `'${uuid}'`
+    }
+  )
+}
+
+interface SchemaColumn {
+  name: string
+  type: string
+}
+
+const schemaCache = new Map<string, Map<string, SchemaColumn[]>>()
+
+async function getTableColumns(
+  database: string,
+  tableName: string
+): Promise<SchemaColumn[] | null> {
+  const cacheKey = `${database}:${tableName}`
+  const cachedColumns = schemaCache.get(database)
+  if (cachedColumns) {
+    return cachedColumns.get(tableName) ?? null
+  }
+
+  try {
+    const describe = await describeDatabase(database)
+    const columnsByTable = new Map<string, SchemaColumn[]>()
+
+    for (const table of describe.tables) {
+      const typeRef = table.product_type_ref
+      const typeDef = describe.typespace.types[typeRef]
+      if (!typeDef || typeof typeDef !== "object" || !("Product" in typeDef)) continue
+
+      const productType = typeDef as {
+        Product: { elements: Array<{ name?: { some?: string }; algebraic_type?: unknown }> }
+      }
+      const columns: SchemaColumn[] = []
+
+      for (const elem of productType.Product.elements) {
+        const name = elem.name?.some ?? "unknown"
+        let typeStr = "unknown"
+        if (elem.algebraic_type) {
+          const at = elem.algebraic_type
+          if (typeof at === "object") {
+            if ("String" in at) typeStr = "String"
+            else if ("U8" in at) typeStr = "U8"
+            else if ("U16" in at) typeStr = "U16"
+            else if ("U32" in at) typeStr = "U32"
+            else if ("U64" in at) typeStr = "U64"
+            else if ("U128" in at) typeStr = "U128"
+            else if ("I8" in at) typeStr = "I8"
+            else if ("I16" in at) typeStr = "I16"
+            else if ("I32" in at) typeStr = "I32"
+            else if ("I64" in at) typeStr = "I64"
+            else if ("I128" in at) typeStr = "I128"
+            else if ("Bool" in at) typeStr = "Bool"
+            else if ("F32" in at) typeStr = "F32"
+            else if ("F64" in at) typeStr = "F64"
+            else if ("Product" in at) {
+              const prod = at as {
+                Product: { elements: Array<{ name?: { some?: string }; algebraic_type?: unknown }> }
+              }
+              const innerName = prod.Product.elements[0]?.name?.some
+              if (innerName === "__uuid__") typeStr = "UUID"
+              else if (innerName === "__identity__") typeStr = "Identity"
+            }
+          }
+        }
+        columns.push({ name, type: typeStr })
+      }
+      columnsByTable.set(table.name, columns)
+    }
+
+    schemaCache.set(database, columnsByTable)
+    return columnsByTable.get(tableName) ?? null
+  } catch {
+    return null
+  }
+}
+
+function parseInsertValues(valuesStr: string): string[] {
+  const values: string[] = []
+  let current = ""
+  let depth = 0
+  let inString = false
+  let stringChar = ""
+
+  for (let i = 0; i < valuesStr.length; i++) {
+    const char = valuesStr[i]
+
+    if (inString) {
+      current += char
+      if (char === stringChar && valuesStr[i + 1] !== stringChar) {
+        inString = false
+      } else if (char === stringChar) {
+        i++
+        current += valuesStr[i]
+      }
+    } else if (char === "'" || char === '"') {
+      inString = true
+      stringChar = char
+      current += char
+    } else if (char === "(") {
+      depth++
+      current += char
+    } else if (char === ")") {
+      depth--
+      current += char
+    } else if (char === "," && depth === 0) {
+      values.push(current.trim())
+      current = ""
+    } else {
+      current += char
+    }
+  }
+
+  if (current.trim()) {
+    values.push(current.trim())
+  }
+
+  return values
+}
+
+function reorderValuesToSchemaOrder(sql: string, schemaColumns: SchemaColumn[]): string {
+  const insertMatch = sql.match(
+    /INSERT\s+INTO\s+([^\s(]+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+(?:\([^)]*\)[^)]*)*)\)/i
+  )
+
+  if (!insertMatch) return sql
+
+  const [, tableName, columnsStr, valuesStr] = insertMatch
+  const specifiedColumns = columnsStr.split(",").map((c) => c.trim().replace(/["`']/g, ""))
+  const values = parseInsertValues(valuesStr)
+
+  if (specifiedColumns.length !== values.length) return sql
+
+  const schemaColumnNames = schemaColumns.map((c) => c.name.toLowerCase())
+  const specifiedColumnsLower = specifiedColumns.map((c) => c.toLowerCase())
+
+  const reorderedValues: string[] = []
+  for (const schemaCol of schemaColumnNames) {
+    const idx = specifiedColumnsLower.indexOf(schemaCol)
+    if (idx !== -1) {
+      reorderedValues.push(values[idx])
+    }
+  }
+
+  if (reorderedValues.length !== values.length) return sql
+
+  const newValuesStr = reorderedValues.join(", ")
+  const newSql = sql.replace(
+    /INSERT\s+INTO\s+([^\s(]+)\s*\([^)]+\)\s*VALUES\s*\([^)]+(?:\([^)]*\)[^)]*)*\)/i,
+    `INSERT INTO ${tableName} VALUES (${newValuesStr})`
+  )
+
+  return newSql
+}
+
+async function transformSqlForSpacetimeDb(sql: string, database?: string): Promise<string> {
+  let transformed = transformUuidsToHex(sql)
+
+  if (database) {
+    const insertMatch = sql.match(/INSERT\s+INTO\s+([^\s(]+)/i)
+    if (insertMatch) {
+      const tableName = insertMatch[1].replace(/["`']/g, "")
+      const columns = await getTableColumns(database, tableName)
+      if (columns) {
+        transformed = reorderValuesToSchemaOrder(transformed, columns)
+      }
+    }
+  }
+
+  return transformed
+}
+
 export interface StatementResult {
   statement: string
   success: boolean
@@ -208,7 +395,8 @@ async function executeSingleStatement(
   statement: string
 ): Promise<StatementResult> {
   try {
-    const result = await executeSqlRaw(database, statement)
+    const transformedStatement = await transformSqlForSpacetimeDb(statement, database)
+    const result = await executeSqlRaw(database, transformedStatement)
     return {
       statement,
       success: true,

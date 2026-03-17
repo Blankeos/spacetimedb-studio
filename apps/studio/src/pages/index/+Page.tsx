@@ -43,7 +43,15 @@ function formatSqlValue(value: unknown): string {
     return `'${escaped}'`
   }
   if (typeof value === "boolean") return value ? "true" : "false"
-  return String(value)
+  if (typeof value === "number") return String(value)
+  const strValue = String(value)
+  const escaped = strValue
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "''")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t")
+  return `'${escaped}'`
 }
 
 export default function SqlEditorPage() {

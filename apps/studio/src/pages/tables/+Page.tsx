@@ -26,6 +26,7 @@ interface QueryResult {
 
 function formatSqlValue(value: unknown): string {
   if (value === null || value === undefined) return "NULL"
+  if (typeof value === "bigint") return value.toString()
   if (typeof value === "string") {
     const escaped = value
       .replace(/\\/g, "\\\\")
@@ -36,7 +37,37 @@ function formatSqlValue(value: unknown): string {
     return `'${escaped}'`
   }
   if (typeof value === "boolean") return value ? "true" : "false"
-  return String(value)
+  if (typeof value === "number") return String(value)
+  const strValue = String(value)
+  const escaped = strValue
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "''")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t")
+  return `'${escaped}'`
+}
+
+function serializeRow(row: Record<string, unknown>): string {
+  function convert(val: unknown): unknown {
+    if (typeof val === "bigint") return val.toString()
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const obj: Record<string, unknown> = {}
+      for (const k of Object.keys(val as Record<string, unknown>)) {
+        obj[k] = convert((val as Record<string, unknown>)[k])
+      }
+      return obj
+    }
+    if (Array.isArray(val)) {
+      return val.map(convert)
+    }
+    return val
+  }
+  const serialized: Record<string, unknown> = {}
+  for (const key of Object.keys(row)) {
+    serialized[key] = convert(row[key])
+  }
+  return JSON.stringify(serialized)
 }
 
 export default function TablesPage() {
@@ -127,8 +158,8 @@ export default function TablesPage() {
             const columns = Object.keys(row)
             return { rows: [row], columns, numRows: 1 }
           }
-          const rowKey = JSON.stringify(row)
-          const exists = prev.rows.some((r) => JSON.stringify(r) === rowKey)
+          const rowKey = serializeRow(row)
+          const exists = prev.rows.some((r) => serializeRow(r) === rowKey)
           if (exists) return prev
           return {
             ...prev,
@@ -140,10 +171,10 @@ export default function TablesPage() {
       onDelete: (row) => {
         setQueryResult((prev) => {
           if (!prev) return prev
-          const rowKey = JSON.stringify(row)
+          const rowKey = serializeRow(row)
           return {
             ...prev,
-            rows: prev.rows.filter((r) => JSON.stringify(r) !== rowKey),
+            rows: prev.rows.filter((r) => serializeRow(r) !== rowKey),
             numRows: Math.max(0, prev.numRows - 1),
           }
         })
@@ -151,10 +182,10 @@ export default function TablesPage() {
       onUpdate: (oldRow, newRow) => {
         setQueryResult((prev) => {
           if (!prev) return prev
-          const oldKey = JSON.stringify(oldRow)
+          const oldKey = serializeRow(oldRow)
           return {
             ...prev,
-            rows: prev.rows.map((r) => (JSON.stringify(r) === oldKey ? newRow : r)),
+            rows: prev.rows.map((r) => (serializeRow(r) === oldKey ? newRow : r)),
           }
         })
       },
@@ -228,11 +259,45 @@ export default function TablesPage() {
         )
       } else {
         const errorMsg = data.results?.[0]?.error || "Update failed"
-        toast.error(`Failed to update: ${errorMsg}`, { id: toastId })
+        toast.error(
+          <div class="flex flex-col gap-1">
+            <span>{errorMsg}</span>
+            <Tippy
+              content={<code class="whitespace-pre-wrap text-xs">{updateSql}</code>}
+              props={{ placement: "bottom", zIndex: 9999999999 }}
+            >
+              <button
+                type="button"
+                onClick={copyToClipboard}
+                class="cursor-pointer text-left text-muted-foreground/70 text-xs underline decoration-dotted hover:text-foreground"
+              >
+                {updateSql.length > 50 ? `${updateSql.slice(0, 50)}...` : updateSql}
+              </button>
+            </Tippy>
+          </div>,
+          { id: toastId }
+        )
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to execute update"
-      toast.error(message, { id: toastId })
+      toast.error(
+        <div class="flex flex-col gap-1">
+          <span>{message}</span>
+          <Tippy
+            content={<code class="whitespace-pre-wrap text-xs">{updateSql}</code>}
+            props={{ placement: "bottom", zIndex: 9999999999 }}
+          >
+            <button
+              type="button"
+              onClick={copyToClipboard}
+              class="cursor-pointer text-left text-muted-foreground/70 text-xs underline decoration-dotted hover:text-foreground"
+            >
+              {updateSql.length > 50 ? `${updateSql.slice(0, 50)}...` : updateSql}
+            </button>
+          </Tippy>
+        </div>,
+        { id: toastId }
+      )
     }
   }
 

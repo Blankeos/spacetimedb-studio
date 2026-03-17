@@ -77,7 +77,11 @@ function schemaToGraph(describe: SpacetimeDescribe): { nodes: SchemaNode[]; edge
       const pkFields = table.primary_key?.[0]?.elements?.map((e: { name: string }) => e.name) || []
       for (const el of typeDef.Product.elements) {
         const name = el.name?.some || "_"
-        const typeName = getTypeNameSimple(el.algebraic_type, describe.types)
+        const typeName = getTypeNameSimple(
+          el.algebraic_type,
+          describe.types,
+          describe.typespace.types
+        )
         columns.push({
           name,
           type: typeName,
@@ -105,7 +109,11 @@ function extractReducers(describe: SpacetimeDescribe) {
     const params: Array<{ name: string; type: string }> = []
     for (const el of reducer.params.elements) {
       const name = el.name?.some || "_"
-      const typeName = getTypeNameSimple(el.algebraic_type, describe.types)
+      const typeName = getTypeNameSimple(
+        el.algebraic_type,
+        describe.types,
+        describe.typespace.types
+      )
       params.push({ name, type: typeName })
     }
 
@@ -125,7 +133,11 @@ function extractReducers(describe: SpacetimeDescribe) {
   })
 }
 
-function getTypeNameSimple(ty: unknown, types: SpacetimeDescribe["types"]): string {
+function getTypeNameSimple(
+  ty: unknown,
+  types: SpacetimeDescribe["types"],
+  typespaceTypes: SpacetimeDescribe["typespace"]["types"]
+): string {
   if (typeof ty !== "object" || ty === null) return "unknown"
   const t = ty as Record<string, unknown>
 
@@ -149,17 +161,31 @@ function getTypeNameSimple(ty: unknown, types: SpacetimeDescribe["types"]): stri
   if ("Timestamp" in t) return "Timestamp"
   if ("Duration" in t) return "Duration"
   if ("Array" in t) {
-    const inner = getTypeNameSimple((t as { Array: [unknown] }).Array[0], types)
+    const inner = getTypeNameSimple((t as { Array: [unknown] }).Array[0], types, typespaceTypes)
     return `${inner}[]`
   }
   if ("Option" in t) {
-    const inner = getTypeNameSimple((t as { Option: [unknown] }).Option[0], types)
+    const inner = getTypeNameSimple((t as { Option: [unknown] }).Option[0], types, typespaceTypes)
     return `${inner}?`
+  }
+  if ("Product" in t) {
+    const product = (t as { Product: { elements: Array<{ name?: { some: string } }> } }).Product
+    const elem = product.elements?.[0]
+    if (elem?.name?.some === "__uuid__") {
+      return "uuid"
+    }
   }
   if ("Ref" in t) {
     const refId = (t as { Ref: [number] }).Ref[0]
     const typeInfo = types.find((ti) => ti.ty === refId)
     if (typeInfo?.name.name) return typeInfo.name.name
+    const typeDef = typespaceTypes[refId]
+    if (typeDef && "Product" in typeDef) {
+      const elem = typeDef.Product.elements?.[0]
+      if (elem?.name?.some === "__uuid__") {
+        return "uuid"
+      }
+    }
     return `Ref<${refId}>`
   }
   return "unknown"

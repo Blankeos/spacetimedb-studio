@@ -80,62 +80,106 @@ async function getSdkModules() {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function convertAlgebraicType(t: any, typespace: any[], typeRef: any): any {
-  if (typeRef.String !== undefined) return t.string()
-  if (typeRef.Bytes !== undefined) return t.bytes()
-  if (typeRef.U8 !== undefined) return t.u8()
-  if (typeRef.U16 !== undefined) return t.u16()
-  if (typeRef.U32 !== undefined) return t.u32()
-  if (typeRef.U64 !== undefined) return t.u64()
-  if (typeRef.U128 !== undefined) return t.u128()
-  if (typeRef.U256 !== undefined) return t.u256()
-  if (typeRef.I8 !== undefined) return t.i8()
-  if (typeRef.I16 !== undefined) return t.i16()
-  if (typeRef.I32 !== undefined) return t.i32()
-  if (typeRef.I64 !== undefined) return t.i64()
-  if (typeRef.I128 !== undefined) return t.i128()
-  if (typeRef.I256 !== undefined) return t.i256()
-  if (typeRef.F32 !== undefined) return t.f32()
-  if (typeRef.F64 !== undefined) return t.f64()
-  if (typeRef.Bool !== undefined) return t.bool()
-  if (typeRef.Identity !== undefined) return t.identity()
-  if (typeRef.Timestamp !== undefined) return t.timestamp()
-  if (typeRef.Duration !== undefined) return t.duration()
+function convertAlgebraicType(t: any, typespace: any[], typeRef: any, fieldName?: string): any {
+  try {
+    if (!typeRef || typeof typeRef !== "object") {
+      console.warn("[Spacetime] Invalid typeRef for field:", fieldName, typeRef)
+      return t.byteArray()
+    }
 
-  if (typeRef.Option !== undefined) {
-    return t.option(convertAlgebraicType(t, typespace, typeRef.Option.some))
-  }
-  if (typeRef.Array !== undefined) {
-    return t.array(convertAlgebraicType(t, typespace, typeRef.Array.element))
-  }
-  if (typeRef.Product !== undefined) {
-    const fields: Record<string, unknown> = {}
-    for (const elem of typeRef.Product.elements) {
-      const fieldName = elem.name?.some
-      if (fieldName) {
-        fields[fieldName] = convertAlgebraicType(t, typespace, elem.algebraic_type)
+    if (typeRef.String !== undefined) return t.string()
+    if (typeRef.Bytes !== undefined) return t.byteArray()
+    if (typeRef.U8 !== undefined) return t.u8()
+    if (typeRef.U16 !== undefined) return t.u16()
+    if (typeRef.U32 !== undefined) return t.u32()
+    if (typeRef.U64 !== undefined) return t.u64()
+    if (typeRef.U128 !== undefined) return t.u128()
+    if (typeRef.U256 !== undefined) return t.u256()
+    if (typeRef.I8 !== undefined) return t.i8()
+    if (typeRef.I16 !== undefined) return t.i16()
+    if (typeRef.I32 !== undefined) return t.i32()
+    if (typeRef.I64 !== undefined) return t.i64()
+    if (typeRef.I128 !== undefined) return t.i128()
+    if (typeRef.I256 !== undefined) return t.i256()
+    if (typeRef.F32 !== undefined) return t.f32()
+    if (typeRef.F64 !== undefined) return t.f64()
+    if (typeRef.Bool !== undefined) return t.bool()
+    if (typeRef.Identity !== undefined) return t.identity()
+    if (typeRef.Timestamp !== undefined) return t.timestamp()
+    if (typeRef.Duration !== undefined) return t.timeDuration()
+    if (typeRef.Ref !== undefined) {
+      const refType = typespace[typeRef.Ref]
+      if (refType) {
+        if (refType.Product) {
+          const elements = refType.Product?.elements || []
+          if (elements.length === 1) {
+            const elem = elements[0]
+            const name = elem.name?.some ?? elem.name
+            if (name === "__uuid__") {
+              return t.uuid()
+            }
+          }
+        }
+        return convertAlgebraicType(t, typespace, refType, fieldName)
       }
     }
-    return t.object(undefined, fields)
-  }
-  if (typeRef.Sum !== undefined) {
-    const variants: Record<string, unknown> = {}
-    for (const variant of typeRef.Sum.variants) {
-      const variantName = variant.name?.some
-      if (variantName) {
-        variants[variantName] = convertAlgebraicType(t, typespace, variant.algebraic_type)
+
+    if (typeRef.Option !== undefined && typeRef.Option !== null) {
+      const someType = typeRef.Option?.some
+      if (someType !== undefined && someType !== null) {
+        return t.option(convertAlgebraicType(t, typespace, someType, fieldName))
       }
     }
-    return t.enum(undefined, variants)
-  }
-  if (typeRef.Ref !== undefined) {
-    const refType = typespace[typeRef.Ref]
-    if (refType) {
-      return convertAlgebraicType(t, typespace, refType)
+    if (typeRef.Array !== undefined && typeRef.Array !== null) {
+      const elemType = typeRef.Array?.element
+      if (elemType !== undefined && elemType !== null) {
+        return t.array(convertAlgebraicType(t, typespace, elemType, fieldName))
+      }
     }
+    if (typeRef.Product !== undefined && typeRef.Product !== null) {
+      const elements = typeRef.Product?.elements || []
+      // Check if this is a UUID wrapper: single element named __uuid__
+      if (elements.length === 1) {
+        const elem = elements[0]
+        const name = elem.name?.some ?? elem.name
+        if (name === "__uuid__") {
+          return t.uuid()
+        }
+      }
+      const fields: Record<string, unknown> = {}
+      for (const elem of elements) {
+        const innerFieldName = elem.name?.some ?? elem.name
+        if (innerFieldName) {
+          fields[innerFieldName] = convertAlgebraicType(
+            t,
+            typespace,
+            elem.algebraic_type,
+            innerFieldName
+          )
+        }
+      }
+      return t.object(undefined, fields)
+    }
+    if (typeRef.Sum !== undefined && typeRef.Sum !== null) {
+      const variants: Record<string, unknown> = {}
+      const variantsArr = typeRef.Sum?.variants || []
+      for (const variant of variantsArr) {
+        const variantName = variant.name?.some ?? variant.name
+        if (variantName) {
+          variants[variantName] = convertAlgebraicType(
+            t,
+            typespace,
+            variant.algebraic_type,
+            variantName
+          )
+        }
+      }
+      return t.enum(undefined, variants)
+    }
+  } catch (err) {
+    console.warn("[Spacetime] Error converting type for field:", fieldName, err)
   }
-  // Fallback
-  return t.bytes()
+  return t.byteArray()
 }
 
 // Build remote module from database schema
@@ -153,10 +197,11 @@ async function buildRemoteModule(schema: any) {
 
     if (typeDef && typeDef.Product) {
       const fields: Record<string, unknown> = {}
-      for (const elem of typeDef.Product.elements) {
-        const fieldName = elem.name?.some
-        if (fieldName) {
-          fields[fieldName] = convertAlgebraicType(t, typespace, elem.algebraic_type)
+      const elements = typeDef.Product?.elements || []
+      for (const elem of elements) {
+        const fName = elem.name?.some ?? elem.name
+        if (fName) {
+          fields[fName] = convertAlgebraicType(t, typespace, elem.algebraic_type, fName)
         }
       }
       const rowType = t.row(fields)
@@ -171,16 +216,14 @@ async function buildRemoteModule(schema: any) {
     }
   }
 
-  // Build reducer definitions - pass plain object, not t.object()
   const reducerDefs: unknown[] = []
   for (const reducer of schema.reducers || []) {
     const params: Record<string, unknown> = {}
-    if (reducer.params?.elements) {
-      for (const elem of reducer.params.elements) {
-        const paramName = elem.name?.some
-        if (paramName) {
-          params[paramName] = convertAlgebraicType(t, typespace, elem.algebraic_type)
-        }
+    const elements = reducer.params?.elements || []
+    for (const elem of elements) {
+      const paramName = elem.name?.some ?? elem.name
+      if (paramName) {
+        params[paramName] = convertAlgebraicType(t, typespace, elem.algebraic_type, paramName)
       }
     }
     reducerDefs.push(reducerSchema(reducer.name, params))
@@ -188,8 +231,6 @@ async function buildRemoteModule(schema: any) {
 
   const tablesSchema = schemaFn(tables)
   const reducersSchema = reducers(...reducerDefs)
-
-  console.log("[Spacetime] Built schema with tables:", Object.keys(tables))
 
   return {
     versionInfo: {
@@ -213,7 +254,6 @@ const activeSubscriptions = new Map<string, () => void>()
 
 export function SpacetimeProvider(props: { children: JSX.Element }) {
   onCleanup(() => {
-    console.log("[Spacetime] Provider cleanup - disconnecting")
     activeSubscriptions.clear()
     const conn = globalConnection()
     if (conn && typeof conn === "object" && "disconnect" in conn) {
@@ -230,9 +270,7 @@ export function SpacetimeProvider(props: { children: JSX.Element }) {
   })
 
   const connect = async (database: string) => {
-    // Prevent re-entrancy and re-connecting to same database
     if (isConnecting || (currentDatabase === database && globalConnection())) {
-      console.log("[Spacetime] Skipping connect - already connecting or connected to", database)
       return
     }
     isConnecting = true
@@ -252,59 +290,37 @@ export function SpacetimeProvider(props: { children: JSX.Element }) {
     setGlobalConnectionError(null)
 
     try {
-      console.log("[Spacetime] Connecting to:", database)
       const [config, sdk, dbSchema] = await Promise.all([
         fetchConnectionConfig(database),
         getSdkModules(),
         fetchDatabaseSchema(database),
       ])
 
-      console.log("[Spacetime] Config:", config)
-      console.log(
-        "[Spacetime] Schema tables:",
-        (dbSchema.tables || []).map((t: any) => t.name).join(", ")
-      )
-
       // Build remote module from actual schema
       const remoteModule = await buildRemoteModule(dbSchema)
-      console.log("[Spacetime] Remote module built")
 
-      // Create DbConnection class
-      const DynamicDbConnection = class extends (sdk.DbConnectionImpl as any) {
-        constructor(config: unknown) {
-          super(config)
-        }
-      }
+      // DbConnectionBuilder calls dbConnectionCtor(config) without 'new',
+      // but DbConnectionImpl is a class that requires 'new'.
+      // So we wrap it in a factory function.
+      const createConnection = (config: unknown) => new (sdk.DbConnectionImpl as any)(config)
 
-      // Create connection builder
-      const builder = new (sdk.DbConnectionBuilder as any)(
-        remoteModule,
-        (config: unknown) => new DynamicDbConnection(config)
-      )
+      const builder = new (sdk.DbConnectionBuilder as any)(remoteModule, createConnection)
         .withUri(config.uri)
         .withDatabaseName(config.database)
         .onConnect((conn: unknown, _identity: unknown, _token: unknown) => {
-          console.log("[Spacetime] Connected!")
           isConnecting = false
           currentDatabase = database
-          // Log available tables
-          if (conn && typeof conn === "object" && "db" in conn) {
-            const dbConn = conn as { db: Record<string, unknown> }
-            console.log("[Spacetime] Available tables:", Object.keys(dbConn.db))
-          }
           setGlobalConnection(conn)
           setGlobalIsActive(true)
           setGlobalConnectionError(null)
         })
-        .onDisconnect((ctx: unknown, error?: Error) => {
-          console.log("[Spacetime] Disconnected", error)
+        .onDisconnect((_ctx: unknown, _error?: Error) => {
           isConnecting = false
           currentDatabase = null
           setGlobalConnection(null)
           setGlobalIsActive(false)
         })
         .onConnectError((_ctx: unknown, error: Error) => {
-          console.error("[Spacetime] Connection error:", error)
           isConnecting = false
           currentDatabase = null
           setGlobalConnectionError(error.message)
@@ -313,14 +329,11 @@ export function SpacetimeProvider(props: { children: JSX.Element }) {
         })
 
       if (config.token) {
-        console.log("[Spacetime] Using auth token")
         builder.withToken(config.token)
       }
 
-      console.log("[Spacetime] Building connection...")
       builder.build()
     } catch (err) {
-      console.error("[Spacetime] Failed to connect:", err)
       isConnecting = false
       currentDatabase = null
       const message = err instanceof Error ? err.message : "Failed to connect"
@@ -355,16 +368,13 @@ export function SpacetimeProvider(props: { children: JSX.Element }) {
       onUpdate?: (oldRow: TableRow, newRow: TableRow) => void
     }
   ): (() => void) => {
-    // Cleanup existing subscription for this table
     const existingCleanup = activeSubscriptions.get(tableName)
     if (existingCleanup) {
-      console.log("[Spacetime] Cleaning up existing subscription for:", tableName)
       existingCleanup()
     }
 
     const conn = globalConnection()
     if (!conn) {
-      console.log("[Spacetime] subscribeToTable: no connection")
       callbacks.onApplied?.([])
       return () => {}
     }
@@ -385,62 +395,47 @@ export function SpacetimeProvider(props: { children: JSX.Element }) {
     }
 
     const dbConn = conn as DbConnection
-    console.log("[Spacetime] subscribeToTable:", tableName)
-    console.log("[Spacetime] Available tables:", Object.keys(dbConn.db))
 
     const cleanupFns: (() => void)[] = []
 
-    // Get table API and register handlers
     const table = dbConn.db[tableName] as TableAPI | undefined
-    console.log("[Spacetime] Table object:", table ? "exists" : "not found")
 
     if (table) {
-      // Register event handlers for real-time updates
       const unsubInsert = table.onInsert((_ctx: unknown, row: TableRow) => {
-        console.log("[Spacetime] onInsert:", row)
         callbacks.onInsert?.(row)
       })
       cleanupFns.push(unsubInsert)
 
       const unsubDelete = table.onDelete((_ctx: unknown, row: TableRow) => {
-        console.log("[Spacetime] onDelete:", row)
         callbacks.onDelete?.(row)
       })
       cleanupFns.push(unsubDelete)
 
       const unsubUpdate = table.onUpdate((_ctx: unknown, oldRow: TableRow, newRow: TableRow) => {
-        console.log("[Spacetime] onUpdate:", oldRow, "->", newRow)
         callbacks.onUpdate?.(oldRow, newRow)
       })
       cleanupFns.push(unsubUpdate)
     }
 
-    // Subscribe and get initial data
     const subHandle = dbConn
       .subscriptionBuilder()
       .onApplied(() => {
-        console.log("[Spacetime] Subscription applied for:", tableName)
-
         const tableAfter = dbConn.db[tableName] as TableAPI | undefined
 
         if (tableAfter) {
           try {
             const rows = Array.from(tableAfter.iter()) as TableRow[]
-            console.log("[Spacetime] Got", rows.length, "rows")
             callbacks.onApplied?.(rows)
-          } catch (e) {
-            console.error("[Spacetime] Error iterating rows:", e)
+          } catch {
             callbacks.onApplied?.([])
           }
         } else {
-          console.log("[Spacetime] Table not found after subscription")
           callbacks.onApplied?.([])
         }
       })
       .subscribe(`SELECT * FROM ${tableName}`)
 
     const cleanup = () => {
-      console.log("[Spacetime] Unsubscribing from:", tableName)
       try {
         subHandle.unsubscribe()
       } catch {

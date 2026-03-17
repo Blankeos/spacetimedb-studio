@@ -159,12 +159,6 @@ export function ResultTable(props: ResultTableProps) {
   const isCellSelected = (rowIndex: number, columnId: string) =>
     selectedCells().has(getCellKey(rowIndex, columnId))
 
-  const getEditingValue = () => {
-    const editing = editingCell()
-    if (!editing) return null
-    return props.rows[editing.row]?.[editing.col]
-  }
-
   const getEditingRect = () => editingCell()?.element.getBoundingClientRect()
 
   const getDialogPosition = () => {
