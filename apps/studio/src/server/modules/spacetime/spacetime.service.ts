@@ -1,20 +1,13 @@
 import { spawn } from "node:child_process"
 
-const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-
-function uuidToHex(uuid: string): string {
-  const hex = uuid.replace(/-/g, "")
-  return `0x${hex}`
-}
-
 function transformUuidsToHex(sql: string): string {
+  // Match any UUID-shaped string (8-4-4-4-12 alphanumeric pattern) and convert to 0x hex
+  // SpacetimeDB only accepts 0x hex format for UUIDs, not quoted strings
   return sql.replace(
-    /'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'/g,
+    /'([0-9a-zA-Z]{8}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{12})'/g,
     (_, uuid) => {
-      if (UUID_REGEX.test(uuid)) {
-        return uuidToHex(uuid)
-      }
-      return `'${uuid}'`
+      const hex = uuid.replace(/-/g, "")
+      return `0x${hex}`
     }
   )
 }
@@ -136,38 +129,56 @@ function parseInsertValues(valuesStr: string): string[] {
 }
 
 function reorderValuesToSchemaOrder(sql: string, schemaColumns: SchemaColumn[]): string {
-  const insertMatch = sql.match(
+  const schemaColumnNames = schemaColumns.map((c) => c.name)
+  const schemaColumnNamesLower = schemaColumnNames.map((c) => c.toLowerCase())
+  const columnListStr = schemaColumnNames.join(", ")
+
+  // Match INSERT with explicit column list
+  const withColumnsMatch = sql.match(
     /INSERT\s+INTO\s+([^\s(]+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+(?:\([^)]*\)[^)]*)*)\)/i
   )
 
-  if (!insertMatch) return sql
+  if (withColumnsMatch) {
+    const [, tableName, columnsStr, valuesStr] = withColumnsMatch
+    const specifiedColumns = columnsStr.split(",").map((c) => c.trim().replace(/["`']/g, ""))
+    const values = parseInsertValues(valuesStr)
 
-  const [, tableName, columnsStr, valuesStr] = insertMatch
-  const specifiedColumns = columnsStr.split(",").map((c) => c.trim().replace(/["`']/g, ""))
-  const values = parseInsertValues(valuesStr)
+    if (specifiedColumns.length !== values.length) return sql
 
-  if (specifiedColumns.length !== values.length) return sql
+    const specifiedColumnsLower = specifiedColumns.map((c) => c.toLowerCase())
 
-  const schemaColumnNames = schemaColumns.map((c) => c.name.toLowerCase())
-  const specifiedColumnsLower = specifiedColumns.map((c) => c.toLowerCase())
-
-  const reorderedValues: string[] = []
-  for (const schemaCol of schemaColumnNames) {
-    const idx = specifiedColumnsLower.indexOf(schemaCol)
-    if (idx !== -1) {
-      reorderedValues.push(values[idx])
+    // Reorder values to match schema order
+    const reorderedValues: string[] = []
+    for (const schemaCol of schemaColumnNamesLower) {
+      const idx = specifiedColumnsLower.indexOf(schemaCol)
+      if (idx !== -1) {
+        reorderedValues.push(values[idx])
+      }
     }
+
+    if (reorderedValues.length !== values.length) return sql
+
+    const newValuesStr = reorderedValues.join(", ")
+    return sql.replace(
+      /INSERT\s+INTO\s+([^\s(]+)\s*\([^)]+\)\s*VALUES\s*\([^)]+(?:\([^)]*\)[^)]*)*\)/i,
+      `INSERT INTO ${tableName}(${columnListStr}) VALUES (${newValuesStr})`
+    )
   }
 
-  if (reorderedValues.length !== values.length) return sql
-
-  const newValuesStr = reorderedValues.join(", ")
-  const newSql = sql.replace(
-    /INSERT\s+INTO\s+([^\s(]+)\s*\([^)]+\)\s*VALUES\s*\([^)]+(?:\([^)]*\)[^)]*)*\)/i,
-    `INSERT INTO ${tableName} VALUES (${newValuesStr})`
+  // Match INSERT without column list — add column list (SpacetimeDB requires it)
+  const withoutColumnsMatch = sql.match(
+    /INSERT\s+INTO\s+([^\s(]+)\s*VALUES\s*\(/i
   )
 
-  return newSql
+  if (withoutColumnsMatch) {
+    const [, tableName] = withoutColumnsMatch
+    return sql.replace(
+      /INSERT\s+INTO\s+([^\s(]+)\s*VALUES\s*\(/i,
+      `INSERT INTO ${tableName}(${columnListStr}) VALUES (`
+    )
+  }
+
+  return sql
 }
 
 async function transformSqlForSpacetimeDb(sql: string, database?: string): Promise<string> {
