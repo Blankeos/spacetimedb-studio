@@ -1,5 +1,5 @@
 import { useLocalStorageStore } from "bagon-hooks"
-import { createEffect, createMemo, createSignal, Show } from "solid-js"
+import { createMemo, createSignal, Show } from "solid-js"
 import { toast } from "solid-sonner"
 import { useMetadata } from "vike-metadata-solid"
 import { PageHeader } from "@/components/page-header"
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Resizable, ResizableHandle, ResizablePanel } from "@/components/ui/resizable"
 import { useDatabase } from "@/contexts/database"
+import { useTableSchemas } from "@/hooks/useTableSchemas"
 import { honoClient } from "@/lib/hono-client"
 import { Tippy } from "@/lib/solid-tippy/tippy"
 import getTitle from "@/utils/get-title"
@@ -19,11 +20,6 @@ interface QueryState {
   isLoading: boolean
   executionTime: number
   lastExecutedAt: Date | null
-}
-
-interface TableSchema {
-  name: string
-  primaryKeyColumns: string[]
 }
 
 function extractTableNameFromQuery(sql: string): string | null {
@@ -68,45 +64,11 @@ export default function SqlEditorPage() {
     executionTime: 0,
     lastExecutedAt: null,
   })
-  const [tableSchemas, setTableSchemas] = createSignal<Map<string, TableSchema>>(new Map())
+  const tableSchemas = useTableSchemas(() => database() ?? undefined)
   const [selectedQuery, setSelectedQuery] = createSignal<{
     text: string
     statementCount: number
   } | null>(null)
-
-  createEffect(() => {
-    const db = database()
-    if (!db) return
-
-    honoClient.spacetime.describe
-      .$get({ query: { db } })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.success || !data.data) return
-
-        const schemas = new Map<string, TableSchema>()
-        const types = data.data.typespace.types
-        for (const table of data.data.tables) {
-          const pkIndices = table.primary_key as number[]
-          const typeRef = table.product_type_ref as number
-          const productType = types[typeRef] as
-            | { Product: { elements: Array<{ name?: { some: string } }> } }
-            | undefined
-          const elements = productType?.Product?.elements ?? []
-          const pkCols = pkIndices
-            .map((idx) => elements[idx]?.name?.some)
-            .filter((name): name is string => typeof name === "string")
-          schemas.set(table.name, {
-            name: table.name,
-            primaryKeyColumns: pkCols,
-          })
-        }
-        setTableSchemas(schemas)
-      })
-      .catch(() => {
-        // Silently fail - we'll just not have schema info
-      })
-  })
 
   const currentTableName = createMemo(() => {
     const currentSql = sql()
