@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "bun run src/cli.ts",
     "build:cli": "bun run build.ts",
-    "build:copy-studio": "mkdir -p ./dist/studio && cp ../../apps/studio/dist/server/bundled.mjs ./dist/studio/server.mjs && cp -r ../../apps/studio/dist/client ./dist/studio/client",
+    "build:copy-studio": "mkdir -p ./dist/studio/server && cp ../../apps/studio/dist/server/bundled.mjs ./dist/studio/server/server.mjs && cp -r ../../apps/studio/dist/client ./dist/studio/client",
     "build": "rm -rf ./dist && bun run build:cli && bun run build:copy-studio",
     "check": "tsc --noEmit"
   },

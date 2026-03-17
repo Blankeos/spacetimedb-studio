@@ -23,17 +23,17 @@ function findStudioServer(): string | null {
 
   const candidates = isCompiled
     ? [
-        join(process.cwd(), "dist/studio/server.mjs"),
+        join(process.cwd(), "dist/studio/server/server.mjs"),
         join(process.cwd(), "../../apps/studio/dist/server/bundled.mjs"),
       ]
     : [
         // Dev: apps/studio bundled server
         resolve(baseDir, "../../../apps/studio/dist/server/bundled.mjs"),
         // Installed package: bundled server alongside this CLI file
-        join(baseDir, "studio/server.mjs"),
+        join(baseDir, "studio/server/server.mjs"),
         // cwd fallbacks
         join(process.cwd(), "apps/studio/dist/server/bundled.mjs"),
-        join(process.cwd(), "dist/studio/server.mjs"),
+        join(process.cwd(), "dist/studio/server/server.mjs"),
       ]
 
   for (const candidate of candidates) {
