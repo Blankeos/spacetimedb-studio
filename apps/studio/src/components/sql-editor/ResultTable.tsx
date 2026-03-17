@@ -1,6 +1,6 @@
 import type { ColumnDef } from "@tanstack/solid-table"
 import { createSolidTable, flexRender, getCoreRowModel } from "@tanstack/solid-table"
-import { createMemo, createSignal, For, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
 import { cn } from "@/utils/cn"
 
 interface ResultTableProps {
@@ -142,6 +142,19 @@ export function ResultTable(props: ResultTableProps) {
   }
 
   const getEditingRect = () => editingCell()?.element.getBoundingClientRect()
+
+  createEffect(() => {
+    if (!editingCell()) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setEditingCell(null)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    onCleanup(() => window.removeEventListener("keydown", handleKeyDown))
+  })
 
   return (
     <section
