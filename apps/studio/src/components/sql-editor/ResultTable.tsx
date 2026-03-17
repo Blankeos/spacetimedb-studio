@@ -1,6 +1,14 @@
 import type { ColumnDef } from "@tanstack/solid-table"
 import { createSolidTable, flexRender, getCoreRowModel } from "@tanstack/solid-table"
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import { Tippy } from "@/lib/solid-tippy/tippy"
 import { cn } from "@/utils/cn"
 
@@ -22,6 +30,7 @@ interface ResultTableProps {
   tableName?: string | null
   primaryKeyColumns?: string[]
   onSave?: (edit: CellEdit) => Promise<void>
+  onDeleteRow?: (row: Record<string, unknown>) => Promise<void>
 }
 
 function CellValue(props: { value: unknown }) {
@@ -64,6 +73,7 @@ export function ResultTable(props: ResultTableProps) {
   const [selectionStart, setSelectionStart] = createSignal<{ row: number; col: string } | null>(
     null
   )
+  const [contextMenuRowIndex, setContextMenuRowIndex] = createSignal<number | null>(null)
 
   const getCellKey = (rowIndex: number, columnId: string) => `${rowIndex}-${columnId}`
 
@@ -94,6 +104,11 @@ export function ResultTable(props: ResultTableProps) {
   })
 
   const handleCellMouseDown = (e: MouseEvent, rowIndex: number, columnId: string) => {
+    // Right-click: don't change selection (context menu handles it)
+    if (e.button === 2) {
+      return
+    }
+
     if (e.detail === 2) {
       return
     }
@@ -224,13 +239,102 @@ export function ResultTable(props: ResultTableProps) {
     onCleanup(() => window.removeEventListener("keydown", handleKeyDown))
   })
 
+  const handleContextMenu = (e: MouseEvent) => {
+    const cell = (e.target as HTMLElement).closest("td")
+    if (!cell) return
+
+    const row = cell.closest("tr")
+    if (!row) return
+
+    const tbody = row.closest("tbody")
+    if (!tbody) return
+
+    const rowIndex = Array.from(tbody.children).indexOf(row)
+    if (rowIndex < 0) return
+
+    // If no cell is selected yet, select the right-clicked cell
+    if (selectedCells().size === 0) {
+      const cellIndex = Array.from(row.children).indexOf(cell)
+      if (cellIndex >= 0 && props.columns[cellIndex]) {
+        setSelectedCells(new Set([getCellKey(rowIndex, props.columns[cellIndex])]))
+      }
+    }
+
+    setContextMenuRowIndex(rowIndex)
+  }
+
+  const getSelectedRowIndices = (): Set<number> => {
+    const indices = new Set<number>()
+    for (const key of selectedCells()) {
+      const rowIndex = Number.parseInt(key.split("-")[0], 10)
+      indices.add(rowIndex)
+    }
+    return indices
+  }
+
+  const handleDeleteRow = async () => {
+    if (!props.onDeleteRow) return
+    const indices = getSelectedRowIndices()
+    for (const rowIdx of indices) {
+      const row = props.rows[rowIdx]
+      if (row) await props.onDeleteRow(row)
+    }
+  }
+
+  const handleCopySelection = async () => {
+    const selected = selectedCells()
+    if (selected.size === 0) return
+
+    // Parse all selected cell keys into {row, col} and find bounds
+    const cells: { row: number; col: string }[] = []
+    for (const key of selected) {
+      const dashIdx = key.indexOf("-")
+      const row = Number.parseInt(key.substring(0, dashIdx), 10)
+      const col = key.substring(dashIdx + 1)
+      cells.push({ row, col })
+    }
+
+    const rowIndices = [...new Set(cells.map((c) => c.row))].sort((a, b) => a - b)
+    const colNames = [...new Set(cells.map((c) => c.col))]
+    // Preserve column order from props.columns
+    const orderedCols = props.columns.filter((c) => colNames.includes(c))
+
+    const csvLines: string[] = []
+    for (const rowIdx of rowIndices) {
+      const rowData = props.rows[rowIdx]
+      if (!rowData) continue
+      const values = orderedCols.map((col) => {
+        const cellKey = getCellKey(rowIdx, col)
+        if (!selected.has(cellKey)) return ""
+        const val = rowData[col]
+        if (val === null || val === undefined) return ""
+        const str = String(val)
+        // Escape CSV: quote if contains comma, quote, or newline
+        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+          return `"${str.replace(/"/g, '""')}"`
+        }
+        return str
+      })
+      csvLines.push(values.join(","))
+    }
+
+    try {
+      await navigator.clipboard.writeText(csvLines.join("\n"))
+    } catch {
+      // Silently fail if clipboard is unavailable
+    }
+  }
+
   return (
-    <section
-      class="overflow-auto"
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      aria-label="SQL query results table"
-    >
+    <ContextMenu>
+      <ContextMenuTrigger
+        as="section"
+        class="overflow-auto"
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onContextMenu={handleContextMenu}
+        aria-label="SQL query results table"
+      >
       <Show when={editingCell()}>
         {(editing) => {
           const pkCols = props.primaryKeyColumns ?? []
@@ -414,6 +518,24 @@ export function ResultTable(props: ResultTableProps) {
           <span class="text-sm">No rows returned</span>
         </div>
       </Show>
-    </section>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onSelect={handleCopySelection} disabled={selectedCells().size === 0}>
+          Copy
+          <ContextMenuShortcut class="pl-4">
+            {navigator.platform?.includes("Mac") ? "⌘C" : "Ctrl+C"}
+          </ContextMenuShortcut>
+        </ContextMenuItem>
+        <Show when={props.onDeleteRow}>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            onSelect={handleDeleteRow}
+            class="text-destructive focus:text-destructive"
+          >
+            Delete ({getSelectedRowIndices().size}) Row{getSelectedRowIndices().size !== 1 ? "s" : ""}
+          </ContextMenuItem>
+        </Show>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }

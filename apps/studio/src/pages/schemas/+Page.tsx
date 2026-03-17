@@ -231,6 +231,7 @@ export default function SchemasPage() {
   const [view, setView] = createSignal<"graph" | "json">("graph")
   const [refreshing, setRefreshing] = createSignal(false)
   const [selectedReducer, setSelectedReducer] = createSignal<string | null>(null)
+  const [reducersOpen, setReducersOpen] = createSignal(true)
 
   const fetchSchema = async () => {
     const db = database()
@@ -317,7 +318,7 @@ export default function SchemasPage() {
         onDatabaseChange={handleDatabaseChange}
       >
         <Show when={schema()}>
-          <div class="mr-4 flex items-center gap-3 text-muted-foreground text-xs">
+          <div class="mr-4 hidden items-center gap-3 text-muted-foreground text-xs sm:flex">
             <span>{tableCount()} tables</span>
             <span>{reducers().length} reducers</span>
           </div>
@@ -381,14 +382,41 @@ export default function SchemasPage() {
         <Show when={schema()}>
           <div class="flex min-w-0 flex-1 overflow-hidden">
             <Show when={view() === "graph"}>
-              <div class="min-w-0 flex-1">
+              <div class="relative min-w-0 flex-1">
                 <SchemaFlow nodes={graphData().nodes} edges={graphData().edges} fitView={true} />
+                <Show when={!reducersOpen()}>
+                  <button
+                    type="button"
+                    class="absolute top-3 right-3 flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs shadow-md transition-colors hover:bg-accent"
+                    onClick={() => setReducersOpen(true)}
+                    title="Show reducers panel"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect width="18" height="18" x="3" y="3" rx="2" />
+                      <path d="M15 3v18" />
+                    </svg>
+                    Reducers
+                  </button>
+                </Show>
               </div>
 
-              <div class="w-72 shrink-0 overflow-y-auto border-border border-l bg-card">
-                <div class="border-border border-b p-3">
-                  <h3 class="font-semibold text-sm">Reducers</h3>
-                  <p class="mt-0.5 text-muted-foreground text-xs">{reducers().length} total</p>
+              <Show when={reducersOpen()}>
+              <div class="w-64 shrink-0 overflow-y-auto border-border border-l bg-card lg:w-72">
+                <div class="flex items-center justify-between border-border border-b p-3">
+                  <div>
+                    <h3 class="font-semibold text-sm">Reducers</h3>
+                    <p class="mt-0.5 text-muted-foreground text-xs">{reducers().length} total</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="-mr-1 rounded p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    onClick={() => setReducersOpen(false)}
+                    title="Collapse reducers panel"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
                 </div>
 
                 <Show when={userReducers().length > 0}>
@@ -499,6 +527,7 @@ export default function SchemasPage() {
                   </div>
                 </Show>
               </div>
+              </Show>
             </Show>
 
             <Show when={view() === "json"}>

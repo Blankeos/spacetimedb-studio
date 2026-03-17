@@ -8,6 +8,7 @@ interface DataTableProps {
   tableName?: string | null
   primaryKeyColumns?: string[]
   onSave?: (edit: CellEdit) => Promise<void>
+  onDeleteRow?: (row: Record<string, unknown>) => Promise<void>
   class?: string
 }
 
@@ -28,6 +29,7 @@ export const DataTable: Component<DataTableProps> = (props) => {
           tableName={props.tableName}
           primaryKeyColumns={props.primaryKeyColumns}
           onSave={props.onSave}
+          onDeleteRow={props.onDeleteRow}
         />
       </div>
     </Show>

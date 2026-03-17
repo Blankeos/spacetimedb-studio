@@ -302,6 +302,110 @@ export default function TablesPage() {
     }
   }
 
+  const handleDeleteRow = async (row: Record<string, unknown>) => {
+    const table = selectedTable()
+    const pkCols = currentPrimaryKeyColumns()
+    if (!table || pkCols.length === 0) {
+      toast.error("Cannot delete: No primary key found for this table")
+      return
+    }
+
+    const whereClause = pkCols
+      .map((col) => `${col} = ${formatSqlValue(row[col])}`)
+      .join(" AND ")
+
+    const deleteSql = `DELETE FROM ${table} WHERE ${whereClause};`
+
+    const copyToClipboard = async () => {
+      try {
+        await navigator.clipboard.writeText(deleteSql)
+        toast.success("SQL copied to clipboard")
+      } catch {
+        toast.error("Failed to copy")
+      }
+    }
+
+    const toastId = toast.loading(
+      <div class="flex flex-col gap-1">
+        <span>Deleting row...</span>
+        <button type="button" class="cursor-default text-left text-muted-foreground text-xs">
+          {deleteSql.length > 50 ? `${deleteSql.slice(0, 50)}...` : deleteSql}
+        </button>
+      </div>
+    )
+
+    try {
+      const res = await honoClient.spacetime.sql.$post({
+        json: {
+          sql: deleteSql,
+          database: database()!,
+        },
+      })
+      const data = await res.json()
+
+      if (data.results?.[0]?.success) {
+        toast.success(
+          <div class="flex flex-col gap-1">
+            <span>Row deleted successfully</span>
+            <Tippy
+              content={<code class="whitespace-pre-wrap text-xs">{deleteSql}</code>}
+              props={{ placement: "bottom", zIndex: 9999999999 }}
+            >
+              <button
+                type="button"
+                onClick={copyToClipboard}
+                class="cursor-pointer text-left text-muted-foreground text-xs underline decoration-dotted hover:text-foreground"
+              >
+                {deleteSql.length > 50 ? `${deleteSql.slice(0, 50)}...` : deleteSql}
+              </button>
+            </Tippy>
+          </div>,
+          { id: toastId }
+        )
+      } else {
+        const errorMsg = data.results?.[0]?.error || "Delete failed"
+        toast.error(
+          <div class="flex flex-col gap-1">
+            <span>{errorMsg}</span>
+            <Tippy
+              content={<code class="whitespace-pre-wrap text-xs">{deleteSql}</code>}
+              props={{ placement: "bottom", zIndex: 9999999999 }}
+            >
+              <button
+                type="button"
+                onClick={copyToClipboard}
+                class="cursor-pointer text-left text-muted-foreground/70 text-xs underline decoration-dotted hover:text-foreground"
+              >
+                {deleteSql.length > 50 ? `${deleteSql.slice(0, 50)}...` : deleteSql}
+              </button>
+            </Tippy>
+          </div>,
+          { id: toastId }
+        )
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to execute delete"
+      toast.error(
+        <div class="flex flex-col gap-1">
+          <span>{message}</span>
+          <Tippy
+            content={<code class="whitespace-pre-wrap text-xs">{deleteSql}</code>}
+            props={{ placement: "bottom", zIndex: 9999999999 }}
+          >
+            <button
+              type="button"
+              onClick={copyToClipboard}
+              class="cursor-pointer text-left text-muted-foreground/70 text-xs underline decoration-dotted hover:text-foreground"
+            >
+              {deleteSql.length > 50 ? `${deleteSql.slice(0, 50)}...` : deleteSql}
+            </button>
+          </Tippy>
+        </div>,
+        { id: toastId }
+      )
+    }
+  }
+
   return (
     <div class="flex h-full flex-col overflow-hidden bg-background">
       <PageHeader
@@ -389,6 +493,7 @@ export default function TablesPage() {
                     tableName={selectedTable()}
                     primaryKeyColumns={currentPrimaryKeyColumns()}
                     onSave={handleCellSave}
+                    onDeleteRow={handleDeleteRow}
                     class="flex-1"
                   />
                   <Show when={(queryResult()?.rows?.length ?? 0) > 0}>

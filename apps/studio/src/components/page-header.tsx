@@ -32,7 +32,8 @@ export function PageHeader(props: PageHeaderProps) {
               fallback={
                 <button
                   type="button"
-                  class="font-medium font-mono text-foreground text-xs hover:underline"
+                  class="max-w-[160px] truncate font-medium font-mono text-foreground text-xs hover:underline"
+                  title={props.database || "No database selected"}
                   onClick={() => !props.database && setEditingDatabase(true)}
                 >
                   {props.database || "No database selected"}
