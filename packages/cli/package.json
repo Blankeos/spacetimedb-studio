@@ -2,12 +2,15 @@
   "name": "spacetime-studio",
   "version": "0.0.1",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "spacetime-studio": "./dist/spacetime-studio"
   },
   "scripts": {
     "dev": "bun run src/cli.ts",
-    "build:cli": "bun build ./src/cli.ts --compile --outfile ./dist/spacetime-studio --minify",
+    "build:cli": "bun run build.ts",
     "build:copy-studio": "cp -r ../../apps/studio/dist ./dist/studio/dist",
     "build": "bun run build:cli && bun run build:copy-studio",
     "check": "tsc --noEmit"

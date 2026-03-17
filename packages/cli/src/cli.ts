@@ -23,6 +23,14 @@ function findStudioPath(): string | null {
   // Check if we're in compiled mode - bun compile puts us in /$bunfs/root
   const isCompiled = baseDir === "/$bunfs/root" || baseDir === "/$bunfs"
 
+  // For bundled (non-compiled) installs: studio is at dist/studio relative to this file
+  if (!isCompiled) {
+    const bundledStudioPath = join(baseDir, "studio")
+    if (existsSync(join(bundledStudioPath, "dist/server/index.mjs"))) {
+      return bundledStudioPath
+    }
+  }
+
   // For compiled binaries: prioritize paths relative to cwd
   if (isCompiled) {
     // Check packages/cli/dist/studio (for running from packages/cli)
