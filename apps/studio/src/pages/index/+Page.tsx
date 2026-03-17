@@ -58,6 +58,7 @@ export default function SqlEditorPage() {
     lastExecutedAt: null,
   })
   const [tableSchemas, setTableSchemas] = createSignal<Map<string, TableSchema>>(new Map())
+  const [selectedQuery, setSelectedQuery] = createSignal<{ text: string; statementCount: number } | null>(null)
 
   createEffect(() => {
     const db = database()
@@ -107,7 +108,7 @@ export default function SqlEditorPage() {
     window.history.replaceState({}, "", url)
   }
 
-  const executeQuery = async () => {
+  const executeQuery = async (selectedSql?: string) => {
     if (!database()) {
       setQueryState({
         results: [
@@ -125,13 +126,14 @@ export default function SqlEditorPage() {
       return
     }
 
+    const sqlToExecute = selectedSql ?? sql()
     const startTime = performance.now()
     setQueryState((prev) => ({ ...prev, isLoading: true, results: null }))
 
     try {
       const res = await honoClient.spacetime.sql.$post({
         json: {
-          sql: sql(),
+          sql: sqlToExecute,
           database: database(),
         },
       })
@@ -242,10 +244,26 @@ export default function SqlEditorPage() {
         onDatabaseChange={handleDatabaseChange}
       >
         <div class="flex items-center gap-2">
+          <Show when={selectedQuery()} keyed>
+            {(sel) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => executeQuery(sel.text)}
+                disabled={queryState().isLoading}
+                class="gap-1.5"
+              >
+                Run Selected ({sel.statementCount})
+                <kbd class="hidden h-5 items-center gap-1 border border-border bg-muted px-1.5 font-medium font-mono text-[10px] text-muted-foreground opacity-80 sm:inline-flex">
+                  <span class="text-xs">⌘</span>⏎
+                </kbd>
+              </Button>
+            )}
+          </Show>
           <Button
             variant="default"
             size="sm"
-            onClick={executeQuery}
+            onClick={() => executeQuery()}
             disabled={queryState().isLoading}
             class="gap-1.5"
           >
@@ -288,10 +306,13 @@ export default function SqlEditorPage() {
                 />
               </svg>
             </Show>
-            Run
-            <kbd class="hidden h-5 items-center gap-1 border border-primary/30 bg-primary/10 px-1.5 font-medium font-mono text-[10px] text-primary-foreground/80 opacity-60 sm:inline-flex">
-              <span class="text-xs">⌘</span>⏎
-            </kbd>
+            <Show when={!selectedQuery()}>Run</Show>
+            <Show when={selectedQuery()}>Run All</Show>
+            <Show when={!selectedQuery()}>
+              <kbd class="hidden h-5 items-center gap-1 border border-primary/30 bg-primary/10 px-1.5 font-medium font-mono text-[10px] text-primary-foreground/80 opacity-60 sm:inline-flex">
+                <span class="text-xs">⌘</span>⏎
+              </kbd>
+            </Show>
           </Button>
         </div>
       </PageHeader>
@@ -310,7 +331,15 @@ export default function SqlEditorPage() {
                 <SqlEditor
                   value={sql()}
                   onChange={setSql}
-                  onExecute={executeQuery}
+                  onExecute={() => {
+                    const sel = selectedQuery()
+                    if (sel) {
+                      executeQuery(sel.text)
+                    } else {
+                      executeQuery()
+                    }
+                  }}
+                  onSelectionChange={setSelectedQuery}
                   class="border-0 bg-[#282C34] focus:outline-0 focus:ring-0"
                 />
               </div>
