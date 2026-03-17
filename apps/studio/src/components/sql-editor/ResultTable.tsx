@@ -33,6 +33,38 @@ interface ResultTableProps {
   onDeleteRow?: (row: Record<string, unknown>) => Promise<void>
 }
 
+function PkValueCell(props: { value: string }) {
+  const [copied, setCopied] = createSignal(false)
+  const MAX_LEN = 20
+  const isTruncated = props.value.length > MAX_LEN
+  const display = isTruncated ? `${props.value.slice(0, MAX_LEN)}…` : props.value
+
+  const handleClick = async (e: MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(props.value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <Tippy
+      content={<span>{copied() ? "✓ Copied!" : props.value}</span>}
+      props={{ placement: "bottom", hideOnClick: false }}
+    >
+      <span
+        class="cursor-pointer text-foreground underline-offset-2 hover:underline"
+        onClick={handleClick}
+      >
+        {display}
+      </span>
+    </Tippy>
+  )
+}
+
 function CellValue(props: { value: unknown }) {
   const value = props.value
 
@@ -344,11 +376,11 @@ export function ResultTable(props: ResultTableProps) {
           const canSave = hasPk && !pkHasNull
           return (
             <div
-              class="fixed z-50 min-w-[200px] border border-border bg-popover p-2 shadow-lg"
+              class="fixed z-50 border border-border bg-popover p-2 shadow-lg"
               style={{
                 top: `${getDialogPosition().top}px`,
                 left: `${getDialogPosition().left}px`,
-                width: `${getDialogPosition().width}px`,
+                "min-width": `${Math.max(getDialogPosition().width, 280)}px`,
               }}
             >
               <textarea
@@ -368,7 +400,7 @@ export function ResultTable(props: ResultTableProps) {
                 class="w-full resize-none border border-border bg-background p-2 font-mono text-xs focus:border-primary focus:outline-none"
                 rows={3}
               />
-              <div class="mt-1.5 flex items-center justify-between">
+              <div class="mt-1.5 flex items-center justify-between gap-2">
                 <div class="text-[10px] text-muted-foreground">
                   <Show when={!hasPk}>
                     <Tippy
@@ -389,7 +421,7 @@ export function ResultTable(props: ResultTableProps) {
                             <span class="text-muted-foreground/70">{col}=</span>
                             <Show
                               when={isNull}
-                              fallback={<span class="text-foreground">{value}</span>}
+                              fallback={<PkValueCell value={value} />}
                             >
                               <Tippy
                                 content="Primary key is NULL - cannot uniquely identify row"

@@ -122,7 +122,7 @@ export function Tippy(props: CustomTippyOptions & { children: JSX.Element }) {
 
   const [contentContainer, setContentContainer] = createSignal<HTMLDivElement>()
 
-  useTippy(trigger, {
+  const getInstance = useTippy(trigger, {
     get disabled() {
       return tippyProps.disabled
     },
@@ -141,6 +141,19 @@ export function Tippy(props: CustomTippyOptions & { children: JSX.Element }) {
         ...(local.open !== undefined && { trigger: "manual", hideOnClick: false }),
       } satisfies TippyOptions["props"]
     },
+  })
+
+  // SolidJS updates content inside the container element in-place (fine-grained
+  // reactivity), so local.content reference never changes. Use a MutationObserver
+  // to detect DOM mutations and force Popper to recompute size/arrow position.
+  createEffect(() => {
+    const container = contentContainer()
+    if (!container) return
+    const observer = new MutationObserver(() => {
+      getInstance()?.popperInstance?.update()
+    })
+    observer.observe(container, { childList: true, subtree: true, characterData: true })
+    onCleanup(() => observer.disconnect())
   })
 
   return (
