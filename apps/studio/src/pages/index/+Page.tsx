@@ -58,7 +58,10 @@ export default function SqlEditorPage() {
     lastExecutedAt: null,
   })
   const [tableSchemas, setTableSchemas] = createSignal<Map<string, TableSchema>>(new Map())
-  const [selectedQuery, setSelectedQuery] = createSignal<{ text: string; statementCount: number } | null>(null)
+  const [selectedQuery, setSelectedQuery] = createSignal<{
+    text: string
+    statementCount: number
+  } | null>(null)
 
   createEffect(() => {
     const db = database()

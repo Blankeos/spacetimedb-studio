@@ -208,34 +208,34 @@ export function SqlEditor(props: SqlEditorProps) {
           if (!selection.empty) {
             const fullText = update.state.doc.toString()
             const selectedText = update.state.sliceDoc(selection.from, selection.to).trim()
-            
+
             if (!selectedText) {
               props.onSelectionChange?.(null)
               return
             }
-            
+
             const beforeSelection = fullText.slice(0, selection.from)
             const afterSelection = fullText.slice(selection.to)
-            
+
             const lastSemiInBefore = beforeSelection.lastIndexOf(";")
             const firstSemiInAfter = afterSelection.indexOf(";")
-            
-            let expandedFrom = lastSemiInBefore >= 0 ? lastSemiInBefore + 1 : 0
+
+            const expandedFrom = lastSemiInBefore >= 0 ? lastSemiInBefore + 1 : 0
             let expandedTo = selection.to
-            
+
             const endsWithSemi = selectedText.endsWith(";")
             if (!endsWithSemi) {
-              expandedTo = firstSemiInAfter >= 0 ? selection.to + firstSemiInAfter + 1 : fullText.length
+              expandedTo =
+                firstSemiInAfter >= 0 ? selection.to + firstSemiInAfter + 1 : fullText.length
             }
-            
+
             const expandedText = fullText.slice(expandedFrom, expandedTo).trim()
-            
+
             const statementCount = expandedText
               .split(";")
               .map((s) => s.trim())
-              .filter((s) => s.length > 0)
-              .length
-            
+              .filter((s) => s.length > 0).length
+
             props.onSelectionChange?.({
               text: expandedText,
               statementCount,
